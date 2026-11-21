@@ -255,18 +255,43 @@ export default function TourViewer({
 
   const prevTourRef = useRef(tour);
 
-  // Seamlessly update nodes only when tour configuration actually changes
+  // When tour data changes (hotspots added/edited), refresh markers on the
+  // CURRENT scene only — never call setNodes again after init, as that aborts
+  // any in-progress panorama load and causes the stuck loader.
   useEffect(() => {
     if (
-      virtualTourPluginRef.current &&
-      isInitializedRef.current &&
-      prevTourRef.current !== tour
-    ) {
-      prevTourRef.current = tour;
-      const nodes = buildNodes(tour);
-      const activeId =
-        virtualTourPluginRef.current.state.currentNode?.id || currentSceneId;
-      virtualTourPluginRef.current.setNodes(nodes, activeId);
+      !virtualTourPluginRef.current ||
+      !markersPluginRef.current ||
+      !isInitializedRef.current ||
+      prevTourRef.current === tour
+    ) return;
+
+    prevTourRef.current = tour;
+
+    // Only update the markers for the currently visible scene
+    const currentNodeId =
+      virtualTourPluginRef.current.state?.currentNode?.id || currentSceneId;
+    const scene = tour.scenes.find((s) => s.id === currentNodeId);
+    if (!scene) return;
+
+    // Replace all markers on this scene without touching other nodes
+    try {
+      markersPluginRef.current.clearMarkers();
+      scene.hotspots
+        .filter((h) => h.type === 'info')
+        .forEach((h) => {
+          markersPluginRef.current.addMarker({
+            id: h.id,
+            position: h.position,
+            html: createInfoMarkerSvg(h.info?.title || h.label || 'Information'),
+            tooltip: h.info?.title || h.label,
+            size: { width: 140, height: 65 },
+            anchor: 'center center',
+            data: h.info,
+          });
+        });
+    } catch (_) {
+      // Viewer may not be ready yet — safe to ignore
     }
   }, [tour, buildNodes, currentSceneId]);
 
