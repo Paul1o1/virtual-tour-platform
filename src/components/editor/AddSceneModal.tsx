@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Scene } from '@/types/tour';
 import {
   X,
-  Plus,
   Upload,
   Globe,
   Palette,
@@ -36,6 +35,8 @@ interface AddSceneModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddScene: (newScene: Scene) => void;
+  onUpdateScene?: (updatedScene: Scene) => void;
+  editingScene?: Scene | null;
   existingCount: number;
 }
 
@@ -43,6 +44,8 @@ export function AddSceneModal({
   isOpen,
   onClose,
   onAddScene,
+  onUpdateScene,
+  editingScene,
   existingCount,
 }: AddSceneModalProps) {
   const [name, setName] = useState('');
@@ -52,6 +55,20 @@ export function AddSceneModal({
   const [sourceTab, setSourceTab] = useState<'upload' | 'presets' | 'url'>('upload');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingScene) {
+      setName(editingScene.name || '');
+      setFloor(String(editingScene.floor || 'Floor 1'));
+      setDescription(editingScene.description || '');
+      setImageUrl(editingScene.imageUrl || '');
+    } else {
+      setName('');
+      setFloor(`Floor ${existingCount + 1}`);
+      setDescription('');
+      setImageUrl('');
+    }
+  }, [editingScene, existingCount, isOpen]);
 
   if (!isOpen) return null;
 
@@ -108,23 +125,35 @@ export function AddSceneModal({
       return;
     }
 
-    const sceneId = `scene-${Date.now()}`;
-    const newScene: Scene = {
-      id: sceneId,
-      name: name.trim() || `Room ${existingCount + 1}`,
-      floor: floor.trim() || undefined,
-      description: description.trim() || undefined,
-      imageUrl: imageUrl.trim(),
-      thumbnailUrl: imageUrl.trim(),
-      initialView: {
-        yaw: '0deg',
-        pitch: '0deg',
-        zoom: 50,
-      },
-      hotspots: [],
-    };
+    if (editingScene && onUpdateScene) {
+      const updated: Scene = {
+        ...editingScene,
+        name: name.trim() || editingScene.name,
+        floor: floor.trim() || undefined,
+        description: description.trim() || undefined,
+        imageUrl: imageUrl.trim(),
+        thumbnailUrl: imageUrl.trim(),
+      };
+      onUpdateScene(updated);
+    } else {
+      const sceneId = `scene-${Date.now()}`;
+      const newScene: Scene = {
+        id: sceneId,
+        name: name.trim() || `Room ${existingCount + 1}`,
+        floor: floor.trim() || undefined,
+        description: description.trim() || undefined,
+        imageUrl: imageUrl.trim(),
+        thumbnailUrl: imageUrl.trim(),
+        initialView: {
+          yaw: '0deg',
+          pitch: '0deg',
+          zoom: 50,
+        },
+        hotspots: [],
+      };
+      onAddScene(newScene);
+    }
 
-    onAddScene(newScene);
     onClose();
   };
 
@@ -134,7 +163,7 @@ export function AddSceneModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg bg-zinc-900 border border-zinc-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="w-full max-w-lg bg-forest/95 border border-line/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -142,10 +171,10 @@ export function AddSceneModal({
           <div>
             <h3 className="text-base font-display font-extrabold text-paper flex items-center gap-2">
               <Layers className="w-4 h-4 text-saffron" />
-              Add New 360 Room / Scene
+              {editingScene ? 'Edit 360 Room / Scene' : 'Add New 360 Room / Scene'}
             </h3>
             <p className="text-xs text-muted mt-0.5">
-              Add a new panorama location to walk through
+              {editingScene ? 'Update room details or replace 360 photo' : 'Add a new panorama location to walk through'}
             </p>
           </div>
           <button
@@ -227,10 +256,17 @@ export function AddSceneModal({
                   alt="360 Panorama Preview"
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-3">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end justify-between p-3">
                   <p className="text-xs font-semibold text-paper truncate">
                     Ready to load as 360 sphere
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => setImageUrl('')}
+                    className="px-2 py-0.5 rounded-md bg-ink/90 border border-line/30 text-saffron text-[10px] font-bold"
+                  >
+                    Change Photo
+                  </button>
                 </div>
               </div>
             ) : (
@@ -377,7 +413,7 @@ export function AddSceneModal({
                   : 'bg-ink border border-line/20 text-muted cursor-not-allowed'
               }`}
             >
-              Add Room to Tour
+              {editingScene ? 'Save Room Changes' : 'Add Room to Tour'}
             </button>
           </div>
         </form>

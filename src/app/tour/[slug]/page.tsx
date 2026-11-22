@@ -3,6 +3,7 @@
 import React, { use, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { defaultTour } from '@/data/default-tour';
+import { getLocalTourBySlug } from '@/lib/client-storage';
 import { Tour } from '@/types/tour';
 import { ArrowLeft, Sparkles, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
@@ -46,18 +47,13 @@ export default function TourPage({ params }: TourPageProps) {
         console.warn('API fetch failed, checking localStorage fallback:', err);
       }
 
-      // Local storage fallback for recently edited tours
-      try {
-        const saved = localStorage.getItem('vtour_custom_data_v1');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed.slug === slug || slug === 'art-gallery') {
-            setTour(parsed);
-            setIsLoading(false);
-            return;
-          }
-        }
-      } catch (_) {}
+      // Local storage fallback for any created tour
+      const local = getLocalTourBySlug(slug);
+      if (local) {
+        setTour(local);
+        setIsLoading(false);
+        return;
+      }
 
       // Fallback to default demo tour
       setTour(defaultTour);

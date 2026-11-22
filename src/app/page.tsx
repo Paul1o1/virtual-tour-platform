@@ -7,6 +7,7 @@ import { Tour, Scene, Hotspot, HotspotPosition } from '@/types/tour';
 import { AddHotspotModal } from '@/components/editor/AddHotspotModal';
 import { AddSceneModal } from '@/components/editor/AddSceneModal';
 import { NewTourModal } from '@/components/editor/NewTourModal';
+import { getLocalTourBySlug, saveLocalTour, getLocalToursList } from '@/lib/client-storage';
 import {
   Compass,
   Layers,
@@ -64,11 +65,18 @@ export default function HomePage() {
 
   const [pendingPlacement, setPendingPlacement] = useState<HotspotPosition | null>(null);
   const [editingHotspot, setEditingHotspot] = useState<Hotspot | null>(null);
+  const [editingScene, setEditingScene] = useState<Scene | null>(null);
   const [focusPosition, setFocusPosition] = useState<HotspotPosition | null>(null);
   const [isAddSceneOpen, setIsAddSceneOpen] = useState(false);
   const [isNewTourOpen, setIsNewTourOpen] = useState(false);
+  const [newTourDefaultCompany, setNewTourDefaultCompany] = useState<string | undefined>(undefined);
   const [isTourDropdownOpen, setIsTourDropdownOpen] = useState(false);
-  const [allTours, setAllTours] = useState<Array<{ id: string; slug: string; title: string; client: string; sceneCount: number }>>([]);
+  const [allTours, setAllTours] = useState<Array<{ id: string; slug: string; title: string; client: string; sceneCount: number }>>(() => {
+    if (typeof window !== 'undefined') {
+      return getLocalToursList();
+    }
+    return [];
+  });
   const [syncStatus, setSyncStatus] = useState<'synced' | 'saving' | 'local'>('local');
 
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
@@ -77,14 +85,21 @@ export default function HomePage() {
   const [copiedJson, setCopiedJson] = useState(false);
   const [origin, setOrigin] = useState('');
 
-  // Fetch list of tours from API
+  // Fetch list of tours from API and merge with local
   const fetchToursList = async () => {
+    const localList = getLocalToursList();
+    setAllTours(localList);
     try {
       const res = await fetch('/api/tours');
       if (res.ok) {
         const data = await res.json();
         if (data.tours && data.tours.length > 0) {
-          setAllTours(data.tours);
+          setAllTours((prev) => {
+            const map = new Map<string, any>();
+            prev.forEach((t) => map.set(t.slug, t));
+            data.tours.forEach((t: any) => map.set(t.slug, t));
+            return Array.from(map.values());
+          });
         }
       }
     } catch (_) {}
@@ -97,6 +112,13 @@ export default function HomePage() {
 
     const searchParams = new URLSearchParams(window.location.search);
     const requestedTour = searchParams.get('tour');
+    const isNew = searchParams.get('newTour');
+    const compSlug = searchParams.get('companySlug');
+
+    if (isNew === 'true') {
+      if (compSlug) setNewTourDefaultCompany(compSlug);
+      setIsNewTourOpen(true);
+    }
 
     if (requestedTour) {
       handleSelectTour(requestedTour);
@@ -122,8 +144,9 @@ export default function HomePage() {
     setTour(updatedTour);
     setSyncStatus('saving');
 
-    // 1. Instant local persistence
+    // 1. Instant local persistence (both slug key and active key)
     try {
+      saveLocalTour(updatedTour);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTour));
     } catch (e) {
       console.warn('Could not save tour to localStorage', e);
@@ -151,6 +174,18 @@ export default function HomePage() {
   // Switch active tour
   const handleSelectTour = async (selectedSlug: string) => {
     setIsTourDropdownOpen(false);
+
+    // 1. Instant local load
+    const local = getLocalTourBySlug(selectedSlug);
+    if (local) {
+      setTour(local);
+      setActiveSceneId(local.startSceneId || local.scenes[0]?.id || '');
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
+      } catch (_) {}
+    }
+
+    // 2. Fetch from API
     try {
       const res = await fetch(`/api/tours/${selectedSlug}`);
       if (res.ok) {
@@ -158,6 +193,7 @@ export default function HomePage() {
         if (data.tour) {
           setTour(data.tour);
           setActiveSceneId(data.tour.startSceneId || data.tour.scenes[0]?.id || '');
+          saveLocalTour(data.tour);
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data.tour));
           } catch (_) {}
@@ -166,7 +202,7 @@ export default function HomePage() {
       }
     } catch (_) {}
 
-    if (selectedSlug === defaultTour.slug) {
+    if (selectedSlug === defaultTour.slug && !local) {
       setTour(defaultTour);
       setActiveSceneId(defaultTour.startSceneId || defaultTour.scenes[0].id);
     }
@@ -177,6 +213,10 @@ export default function HomePage() {
     setTour(newTour);
     setActiveSceneId(newTour.startSceneId);
     saveTour(newTour);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', `/?tour=${newTour.slug}`);
+    }
+    fetchToursList();
   };
 
   const activeScene =
@@ -224,6 +264,17 @@ export default function HomePage() {
     };
     saveTour(updatedTour);
     setActiveSceneId(newScene.id);
+  };
+
+  // Update existing scene (rename or change 360 photo)
+  const handleUpdateScene = (updatedScene: Scene) => {
+    const updatedScenes = tour.scenes.map((s) => (s.id === updatedScene.id ? updatedScene : s));
+    const updatedTour = {
+      ...tour,
+      scenes: updatedScenes,
+    };
+    saveTour(updatedTour);
+    setEditingScene(null);
   };
 
   // Delete scene
@@ -428,10 +479,35 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Cloud Sync Status Indicator */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-ink/80 border border-line/20 text-[10px] font-medium text-muted">
-              <Cloud className={`w-3 h-3 ${syncStatus === 'saving' ? 'animate-pulse text-saffron' : syncStatus === 'synced' ? 'text-teal' : 'text-muted'}`} />
-              <span>{syncStatus === 'saving' ? 'Saving...' : syncStatus === 'synced' ? 'Cloud Synced' : 'Saved Locally'}</span>
+            {/* Header Right Actions */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setNewTourDefaultCompany(tour.companySlug);
+                  setIsNewTourOpen(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-saffron hover:bg-saffron-hover text-ink text-xs font-display font-extrabold shadow-md transition-all active:scale-95"
+                title="Create a new virtual tour from scratch"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>New Tour</span>
+              </button>
+
+              <Link
+                href="/companies"
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-ink hover:bg-forest-light text-mist hover:text-paper border border-line/30 text-xs font-display font-bold transition-colors"
+                title="Agency Client Directory & Portals"
+              >
+                <Building2 className="w-3.5 h-3.5 text-teal" />
+                <span>Companies</span>
+              </Link>
+
+              {/* Cloud Sync Status Indicator */}
+              <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-ink/80 border border-line/20 text-[10px] font-medium text-muted">
+                <Cloud className={`w-3 h-3 ${syncStatus === 'saving' ? 'animate-pulse text-saffron' : syncStatus === 'synced' ? 'text-teal' : 'text-muted'}`} />
+                <span>{syncStatus === 'saving' ? 'Saving...' : syncStatus === 'synced' ? 'Cloud' : 'Local'}</span>
+              </div>
             </div>
           </div>
 
@@ -512,8 +588,11 @@ export default function HomePage() {
                   </label>
                   <button
                     type="button"
-                    onClick={() => setIsAddSceneOpen(true)}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal hover:bg-teal-light text-paper text-[11px] font-display font-bold shadow-md transition-all"
+                    onClick={() => {
+                      setEditingScene(null);
+                      setIsAddSceneOpen(true);
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal hover:bg-teal-light text-paper text-[11px] font-display font-bold shadow-md transition-all active:scale-95"
                   >
                     <Plus className="w-3 h-3" />
                     <span>Add Room</span>
@@ -524,41 +603,75 @@ export default function HomePage() {
                   {tour.scenes.map((scene) => {
                     const isActive = scene.id === activeSceneId;
                     return (
-                      <button
+                      <div
                         key={scene.id}
-                        onClick={() => {
-                          setActiveSceneId(scene.id);
-                          setIsPlacementMode(false);
-                        }}
                         className={`group relative rounded-xl overflow-hidden border-2 text-left transition-all ${
                           isActive
                             ? 'border-saffron ring-2 ring-saffron/40 shadow-lg'
-                            : 'border-line/20 hover:border-line/40 opacity-70 hover:opacity-100'
+                            : 'border-line/20 hover:border-line/40 opacity-80 hover:opacity-100'
                         }`}
                       >
-                        <div className="relative h-16 bg-ink">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={scene.thumbnailUrl || scene.imageUrl}
-                            alt={scene.name}
-                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
-                          {isActive && (
-                            <div className="absolute top-1.5 right-1.5 p-1 rounded-full bg-saffron text-ink">
-                              <Eye className="w-2.5 h-2.5" />
-                            </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveSceneId(scene.id);
+                            setIsPlacementMode(false);
+                          }}
+                          className="w-full text-left"
+                        >
+                          <div className="relative h-16 bg-ink">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={scene.thumbnailUrl || scene.imageUrl}
+                              alt={scene.name}
+                              className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+                            {isActive && (
+                              <div className="absolute top-1.5 right-1.5 p-1 rounded-full bg-saffron text-ink">
+                                <Eye className="w-2.5 h-2.5" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-2 bg-ink/90">
+                            <p className="text-xs font-display font-bold text-paper truncate">
+                              {scene.name}
+                            </p>
+                            <p className="text-[10px] text-muted truncate">
+                              {scene.hotspots.length} hotspots placed
+                            </p>
+                          </div>
+                        </button>
+
+                        {/* Quick Scene Controls: Edit & Delete */}
+                        <div className="absolute top-1.5 left-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingScene(scene);
+                              setIsAddSceneOpen(true);
+                            }}
+                            className="p-1 rounded-md bg-forest/90 hover:bg-forest text-saffron hover:text-saffron-light border border-line/30 shadow-md transition-colors"
+                            title="Edit room details or change photo"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                          </button>
+                          {tour.scenes.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteScene(scene.id);
+                              }}
+                              className="p-1 rounded-md bg-red-950/90 hover:bg-red-900 text-red-300 hover:text-red-100 border border-red-800/40 shadow-md transition-colors"
+                              title="Delete room"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
                           )}
                         </div>
-                        <div className="p-2 bg-ink/90">
-                          <p className="text-xs font-display font-bold text-paper truncate">
-                            {scene.name}
-                          </p>
-                          <p className="text-[10px] text-muted truncate">
-                            {scene.hotspots.length} hotspots placed
-                          </p>
-                        </div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -849,16 +962,25 @@ export default function HomePage() {
       {/* Add New Room / Scene Modal */}
       <AddSceneModal
         isOpen={isAddSceneOpen}
-        onClose={() => setIsAddSceneOpen(false)}
+        onClose={() => {
+          setIsAddSceneOpen(false);
+          setEditingScene(null);
+        }}
         onAddScene={handleAddScene}
+        onUpdateScene={handleUpdateScene}
+        editingScene={editingScene}
         existingCount={tour.scenes.length}
       />
 
       {/* Create New Client Tour Modal */}
       <NewTourModal
         isOpen={isNewTourOpen}
-        onClose={() => setIsNewTourOpen(false)}
+        onClose={() => {
+          setIsNewTourOpen(false);
+          setNewTourDefaultCompany(undefined);
+        }}
         onCreateTour={handleCreateNewTour}
+        defaultCompanySlug={newTourDefaultCompany}
       />
     </div>
   );

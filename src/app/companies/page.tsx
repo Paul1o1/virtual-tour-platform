@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Company } from '@/types/tour';
 import { defaultCompanies } from '@/data/default-tour';
+import { getLocalCompanies, saveLocalCompany } from '@/lib/client-storage';
 import {
   Building2,
   Plus,
@@ -20,8 +21,13 @@ import {
 } from 'lucide-react';
 
 export default function CompaniesPage() {
-  const [companies, setCompanies] = useState<Company[]>(defaultCompanies);
-  const [isLoading, setIsLoading] = useState(true);
+  const [companies, setCompanies] = useState<Company[]>(() => {
+    if (typeof window !== 'undefined') {
+      return getLocalCompanies();
+    }
+    return defaultCompanies;
+  });
+  const [isLoading, setIsLoading] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // New Company Form State
@@ -32,17 +38,27 @@ export default function CompaniesPage() {
   const [primaryColor, setPrimaryColor] = useState('#F0B429');
 
   useEffect(() => {
+    const local = getLocalCompanies();
+    if (local && local.length > 0) {
+      setCompanies(local);
+    }
+
     async function loadCompanies() {
       try {
         const res = await fetch('/api/companies');
         if (res.ok) {
           const data = await res.json();
           if (data.companies && data.companies.length > 0) {
-            setCompanies(data.companies);
+            setCompanies((prev) => {
+              const map = new Map<string, Company>();
+              prev.forEach((c) => map.set(c.slug, c));
+              data.companies.forEach((c: Company) => map.set(c.slug, { ...map.get(c.slug), ...c }));
+              return Array.from(map.values());
+            });
           }
         }
       } catch (err) {
-        console.warn('API error, using default companies:', err);
+        console.warn('API error, using local companies:', err);
       } finally {
         setIsLoading(false);
       }
@@ -73,6 +89,11 @@ export default function CompaniesPage() {
       toursCount: 0,
     };
 
+    // Save locally immediately
+    const updated = saveLocalCompany(newCompany);
+    setCompanies(updated);
+    setIsAddModalOpen(false);
+
     try {
       await fetch('/api/companies', {
         method: 'POST',
@@ -81,8 +102,6 @@ export default function CompaniesPage() {
       });
     } catch (_) {}
 
-    setCompanies([...companies, newCompany]);
-    setIsAddModalOpen(false);
     setName('');
     setSlug('');
     setTagline('');
@@ -182,12 +201,19 @@ export default function CompaniesPage() {
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-line/20 flex items-center justify-between">
+                <div className="pt-3 border-t border-line/20 flex items-center gap-2">
+                  <Link
+                    href={`/?newTour=true&companySlug=${c.slug}`}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-teal hover:bg-teal-light text-paper text-xs font-display font-bold shadow transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Tour</span>
+                  </Link>
                   <Link
                     href={`/c/${c.slug}`}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-saffron hover:bg-saffron-hover text-ink text-xs font-display font-bold shadow transition-all"
                   >
-                    <span>Open Company Portal</span>
+                    <span>Portal</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>

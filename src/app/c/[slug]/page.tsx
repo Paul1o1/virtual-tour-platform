@@ -4,6 +4,7 @@ import React, { use, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Company, Tour } from '@/types/tour';
 import { defaultCompanies, allDefaultTours } from '@/data/default-tour';
+import { getLocalCompanies, getLocalToursList, getLocalTourBySlug } from '@/lib/client-storage';
 import {
   Building2,
   ExternalLink,
@@ -59,13 +60,18 @@ export default function CompanyPortalPage({ params }: CompanyPortalProps) {
         console.warn('Could not fetch company API, using fallback:', err);
       }
 
-      // Fallback to local default data
-      const foundComp = defaultCompanies.find((c) => c.slug === slug);
+      // Fallback to local storage and default data
+      const allComps = getLocalCompanies();
+      const foundComp = allComps.find((c) => c.slug === slug) || defaultCompanies.find((c) => c.slug === slug);
       if (foundComp) {
         setCompany(foundComp);
+        const localToursList = getLocalToursList().filter((t) => t.companySlug === slug);
         const matchingTours = allDefaultTours.filter((t) => t.companySlug === slug);
-        setTours(
-          matchingTours.map((t) => ({
+        
+        // Merge tours list
+        const map = new Map<string, any>();
+        matchingTours.forEach((t) =>
+          map.set(t.slug, {
             id: t.id,
             slug: t.slug,
             title: t.title,
@@ -75,8 +81,24 @@ export default function CompanyPortalPage({ params }: CompanyPortalProps) {
             status: t.status || 'published',
             coverImage: t.scenes[0]?.thumbnailUrl || t.scenes[0]?.imageUrl,
             updatedAt: new Date().toISOString(),
-          }))
+          })
         );
+        localToursList.forEach((t) => {
+          const fullTour = getLocalTourBySlug(t.slug);
+          map.set(t.slug, {
+            id: t.id,
+            slug: t.slug,
+            title: t.title,
+            client: t.client,
+            companySlug: t.companySlug,
+            sceneCount: fullTour?.scenes.length || t.sceneCount || 1,
+            status: fullTour?.status || 'published',
+            coverImage: fullTour?.scenes[0]?.thumbnailUrl || fullTour?.scenes[0]?.imageUrl,
+            updatedAt: new Date().toISOString(),
+          });
+        });
+
+        setTours(Array.from(map.values()));
       }
       setIsLoading(false);
     }
@@ -153,7 +175,7 @@ export default function CompanyPortalPage({ params }: CompanyPortalProps) {
 
           <div className="flex items-center gap-3">
             <Link
-              href="/"
+              href={`/?newTour=true&companySlug=${slug}`}
               className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-saffron hover:bg-saffron-hover active:scale-95 text-xs font-display font-extrabold text-ink shadow-lg shadow-saffron/20 transition-all"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -232,7 +254,7 @@ export default function CompanyPortalPage({ params }: CompanyPortalProps) {
           </div>
 
           <Link
-            href="/"
+            href={`/?newTour=true&companySlug=${slug}`}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-forest-light hover:bg-forest text-mist hover:text-paper border border-line/20 text-xs font-semibold transition-colors"
           >
             <Plus className="w-3.5 h-3.5 text-saffron" />
@@ -249,7 +271,7 @@ export default function CompanyPortalPage({ params }: CompanyPortalProps) {
               Create the first 360° walkthrough in the studio and assign it to {company.name}.
             </p>
             <Link
-              href="/"
+              href={`/?newTour=true&companySlug=${slug}`}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-saffron hover:bg-saffron-hover text-ink text-xs font-display font-bold transition-all shadow-lg"
             >
               <Plus className="w-4 h-4" />

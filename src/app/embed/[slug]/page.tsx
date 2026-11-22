@@ -3,6 +3,7 @@
 import React, { use, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { defaultTour } from '@/data/default-tour';
+import { getLocalTourBySlug } from '@/lib/client-storage';
 import { Tour } from '@/types/tour';
 
 // Dynamically import TourViewer
@@ -47,16 +48,12 @@ export default function EmbedPage({ params }: EmbedPageProps) {
         console.warn('API fetch failed, fallback to local storage:', err);
       }
 
-      try {
-        const saved = localStorage.getItem('vtour_custom_data_v1');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed.slug === slug || slug === 'art-gallery') {
-            setTour(parsed);
-            return;
-          }
-        }
-      } catch (_) {}
+      // Local storage fallback for any created tour
+      const local = getLocalTourBySlug(slug);
+      if (local) {
+        setTour(local);
+        return;
+      }
 
       setTour(defaultTour);
     }
