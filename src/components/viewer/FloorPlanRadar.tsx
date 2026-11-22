@@ -2,28 +2,36 @@
 
 import React, { useState } from 'react';
 import { Scene } from '@/types/tour';
-import { Map, X, Maximize2, Minimize2, Compass, Layers } from 'lucide-react';
+import { Map, X, Maximize2, Minimize2 } from 'lucide-react';
 
 interface FloorPlanRadarProps {
   scenes: Scene[];
+  currentScene: Scene | undefined;
   currentSceneId: string;
-  currentYawDeg: number; // 0 to 360 degrees
+  currentYawDeg: number; // 0–360 degrees
   onSelectScene: (sceneId: string) => void;
   brandColor?: string;
 }
 
-// Visual layout coordinates for rooms on the 2D mini-map (normalized 0-100%)
-const DEFAULT_ROOM_COORDINATES: Record<string, { x: number; y: number; label: string }> = {
-  'scene-entrance': { x: 50, y: 55, label: 'Grand Hall' },
-  'scene-veranda': { x: 75, y: 30, label: 'Courtyard' },
-  'scene-lounge': { x: 25, y: 35, label: 'Lounge' },
-  'scene-overlook': { x: 80, y: 75, label: 'Terrace' },
-  'sky-living': { x: 45, y: 50, label: 'Grand Salon' },
-  'sky-dining': { x: 70, y: 40, label: 'Dining Suite' },
-};
+/** Distribute scenes evenly around an ellipse if no presets match */
+function getAutoLayout(
+  scenes: Scene[]
+): Record<string, { x: number; y: number }> {
+  const layout: Record<string, { x: number; y: number }> = {};
+  const n = scenes.length;
+  scenes.forEach((s, i) => {
+    const angle = (i / Math.max(n, 1)) * 2 * Math.PI - Math.PI / 2;
+    layout[s.id] = {
+      x: Math.round(50 + 36 * Math.cos(angle)),
+      y: Math.round(50 + 36 * Math.sin(angle)),
+    };
+  });
+  return layout;
+}
 
 export function FloorPlanRadar({
   scenes,
+  currentScene,
   currentSceneId,
   currentYawDeg,
   onSelectScene,
@@ -31,25 +39,31 @@ export function FloorPlanRadar({
   const [isOpen, setIsOpen] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Fallback room coordinate calculation if room isn't in presets
-  const getCoordinates = (sceneId: string, index: number, total: number) => {
-    if (DEFAULT_ROOM_COORDINATES[sceneId]) {
-      return DEFAULT_ROOM_COORDINATES[sceneId];
-    }
-    // Distribute nicely along an architectural circle/grid
-    const angle = (index / Math.max(total, 1)) * 2 * Math.PI - Math.PI / 2;
-    const x = Math.round(50 + 35 * Math.cos(angle));
-    const y = Math.round(50 + 35 * Math.sin(angle));
-    const scene = scenes.find((s) => s.id === sceneId);
-    return { x, y, label: scene?.name || `Room ${index + 1}` };
-  };
+  // Build coordinate map once per render (scenes rarely change length)
+  const layout = getAutoLayout(scenes);
 
-  const activeIndex = scenes.findIndex((s) => s.id === currentSceneId);
-  const activeCoord = getCoordinates(
-    currentSceneId,
-    activeIndex >= 0 ? activeIndex : 0,
-    scenes.length
-  );
+  const getCoords = (sceneId: string) =>
+    layout[sceneId] ?? { x: 50, y: 50 };
+
+  const activeCoord = getCoords(currentSceneId);
+
+  // --- Link-hotspot connections for the CURRENT scene only ---
+  // We draw a line from the active dot to each scene reachable by a link hotspot.
+  const linkConnections: Array<{ targetId: string }> = (
+    currentScene?.hotspots ?? []
+  )
+    .filter((h) => h.type === 'link' && h.linkedSceneId)
+    .map((h) => ({ targetId: h.linkedSceneId as string }));
+
+  // All link hotspot target ids across the whole tour (for persistent grey lines)
+  const allConnections: Array<{ fromId: string; toId: string }> = [];
+  scenes.forEach((scene) => {
+    (scene.hotspots ?? [])
+      .filter((h) => h.type === 'link' && h.linkedSceneId)
+      .forEach((h) => {
+        allConnections.push({ fromId: scene.id, toId: h.linkedSceneId as string });
+      });
+  });
 
   return (
     <div className="select-none">
@@ -101,25 +115,24 @@ export function FloorPlanRadar({
             </div>
           </div>
 
-          {/* 2D Architectural Layout Canvas */}
+          {/* 2D Map Canvas */}
           <div className="relative flex-1 bg-[#0A2621]/90 p-3 overflow-hidden">
-            {/* Architectural Grid Lines */}
+            {/* Dot grid background */}
             <div
               className="absolute inset-0 opacity-15"
               style={{
-                backgroundImage:
-                  'radial-gradient(circle, #D5E0DA 1px, transparent 1px)',
+                backgroundImage: 'radial-gradient(circle, #D5E0DA 1px, transparent 1px)',
                 backgroundSize: '16px 16px',
               }}
             />
 
-            {/* Floor Boundary Walls Outline (SVG) */}
+            {/* SVG: wall outline + connection lines */}
             <svg
               className="absolute inset-0 w-full h-full pointer-events-none p-3"
               viewBox="0 0 100 100"
               preserveAspectRatio="none"
             >
-              {/* Exterior wall lines */}
+              {/* Faint boundary box */}
               <polygon
                 points="15,20 85,20 90,85 10,85"
                 fill="none"
@@ -128,36 +141,57 @@ export function FloorPlanRadar({
                 strokeDasharray="2 1"
                 opacity="0.4"
               />
-              {/* Interior partitions */}
               <line x1="50" y1="20" x2="50" y2="85" stroke="#2F7F79" strokeWidth="1" opacity="0.3" />
               <line x1="15" y1="50" x2="85" y2="50" stroke="#2F7F79" strokeWidth="1" opacity="0.3" />
 
-              {/* Connecting walk pathways between scenes */}
-              {scenes.length > 1 &&
-                scenes.map((s, idx) => {
-                  if (idx === 0) return null;
-                  const prev = getCoordinates(scenes[idx - 1].id, idx - 1, scenes.length);
-                  const curr = getCoordinates(s.id, idx, scenes.length);
-                  return (
-                    <line
-                      key={`path-${s.id}`}
-                      x1={prev.x}
-                      y1={prev.y}
-                      x2={curr.x}
-                      y2={curr.y}
-                      stroke="#F0B429"
-                      strokeWidth="0.8"
-                      strokeDasharray="1.5 1.5"
-                      opacity="0.35"
-                    />
-                  );
-                })}
+              {/* All link-hotspot connections across the tour (dim grey) */}
+              {allConnections.map(({ fromId, toId }, i) => {
+                const from = getCoords(fromId);
+                const to = getCoords(toId);
+                // Don't double-draw active connections below
+                const isActive =
+                  fromId === currentSceneId || toId === currentSceneId;
+                if (isActive) return null;
+                return (
+                  <line
+                    key={`all-${i}`}
+                    x1={from.x}
+                    y1={from.y}
+                    x2={to.x}
+                    y2={to.y}
+                    stroke="#D5E0DA"
+                    strokeWidth="0.6"
+                    strokeDasharray="1.5 2"
+                    opacity="0.2"
+                  />
+                );
+              })}
+
+              {/* Active scene link-hotspot connections (highlighted saffron) */}
+              {linkConnections.map(({ targetId }, i) => {
+                const to = getCoords(targetId);
+                return (
+                  <line
+                    key={`link-${i}`}
+                    x1={activeCoord.x}
+                    y1={activeCoord.y}
+                    x2={to.x}
+                    y2={to.y}
+                    stroke="#F0B429"
+                    strokeWidth="1"
+                    strokeDasharray="2 1.5"
+                    opacity="0.75"
+                  />
+                );
+              })}
             </svg>
 
-            {/* Interactive Room Spots & Active Radar Beam */}
+            {/* Scene dots */}
             {scenes.map((scene, idx) => {
-              const coords = getCoordinates(scene.id, idx, scenes.length);
+              const coords = getCoords(scene.id);
               const isActive = scene.id === currentSceneId;
+              // Is this scene reachable by a link from the current scene?
+              const isLinked = linkConnections.some((c) => c.targetId === scene.id);
 
               return (
                 <div
@@ -165,7 +199,7 @@ export function FloorPlanRadar({
                   style={{ left: `${coords.x}%`, top: `${coords.y}%` }}
                   className="absolute -translate-x-1/2 -translate-y-1/2 group z-20"
                 >
-                  {/* Rotating Radar Vision Cone on Active Room */}
+                  {/* Radar vision cone on active room */}
                   {isActive && (
                     <div
                       className="absolute -inset-10 pointer-events-none transition-transform duration-75 ease-out"
@@ -174,7 +208,6 @@ export function FloorPlanRadar({
                         transformOrigin: 'center center',
                       }}
                     >
-                      {/* Radar Cone Gradient */}
                       <svg viewBox="0 0 100 100" className="w-full h-full">
                         <defs>
                           <radialGradient id="radarBeam" cx="50%" cy="50%" r="50%">
@@ -183,43 +216,35 @@ export function FloorPlanRadar({
                             <stop offset="100%" stopColor="#0E3B34" stopOpacity="0" />
                           </radialGradient>
                         </defs>
-                        {/* 65-degree FOV camera vision sector */}
-                        <path
-                          d="M 50 50 L 25 5 A 50 50 0 0 1 75 5 Z"
-                          fill="url(#radarBeam)"
-                        />
-                        {/* Center focus ray */}
-                        <line
-                          x1="50"
-                          y1="50"
-                          x2="50"
-                          y2="5"
-                          stroke="#F0B429"
-                          strokeWidth="1.5"
-                          strokeDasharray="2 1"
-                        />
+                        {/* 65° FOV camera sector */}
+                        <path d="M 50 50 L 25 5 A 50 50 0 0 1 75 5 Z" fill="url(#radarBeam)" />
+                        <line x1="50" y1="50" x2="50" y2="5" stroke="#F0B429" strokeWidth="1.5" strokeDasharray="2 1" />
                       </svg>
                     </div>
                   )}
 
-                  {/* Room Clickable Pin */}
+                  {/* Room pin button */}
                   <button
                     onClick={() => onSelectScene(scene.id)}
                     className={`relative z-30 transition-all flex items-center justify-center rounded-full shadow-lg ${
                       isActive
                         ? 'w-5 h-5 bg-saffron text-ink ring-4 ring-saffron/30 scale-110 font-extrabold text-[10px]'
-                        : 'w-3.5 h-3.5 bg-paper/80 hover:bg-saffron hover:scale-125 border border-forest font-semibold'
+                        : isLinked
+                        ? 'w-4 h-4 bg-teal/90 hover:bg-saffron hover:scale-125 border border-saffron/60 shadow-teal/30'
+                        : 'w-3.5 h-3.5 bg-paper/60 hover:bg-saffron hover:scale-125 border border-forest font-semibold'
                     }`}
-                    title={`Teleport to ${scene.name}`}
+                    title={`Go to ${scene.name}`}
                   >
                     {isActive ? (
                       <span className="w-2 h-2 rounded-full bg-ink" />
+                    ) : isLinked ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-saffron/80" />
                     ) : (
                       <span className="w-1 h-1 rounded-full bg-forest" />
                     )}
                   </button>
 
-                  {/* Room Label Tooltip */}
+                  {/* Room label */}
                   <div
                     className={`absolute left-1/2 -translate-x-1/2 mt-1 px-1.5 py-0.5 rounded text-[9px] font-display font-semibold whitespace-nowrap pointer-events-none shadow transition-opacity ${
                       isActive
@@ -227,18 +252,17 @@ export function FloorPlanRadar({
                         : 'bg-forest/90 text-paper/80 opacity-0 group-hover:opacity-100 z-20'
                     }`}
                   >
-                    {coords.label}
+                    {scene.name}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Footer Controls: Room Buttons */}
+          {/* Footer: scene quick-nav pills */}
           <div className="p-1.5 bg-ink/90 border-t border-line/10 flex items-center gap-1 overflow-x-auto scrollbar-none">
-            {scenes.map((s, idx) => {
+            {scenes.map((s) => {
               const isActive = s.id === currentSceneId;
-              const coords = getCoordinates(s.id, idx, scenes.length);
               return (
                 <button
                   key={s.id}
@@ -249,7 +273,7 @@ export function FloorPlanRadar({
                       : 'bg-forest/60 text-muted hover:text-paper hover:bg-forest'
                   }`}
                 >
-                  {coords.label}
+                  {s.name}
                 </button>
               );
             })}

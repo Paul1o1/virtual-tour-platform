@@ -479,6 +479,7 @@ export default function TourViewer({
       <div className="absolute bottom-20 left-4 z-20 pointer-events-none">
         <FloorPlanRadar
           scenes={tour.scenes}
+          currentScene={tour.scenes.find((s) => s.id === currentSceneId)}
           currentSceneId={currentSceneId}
           currentYawDeg={currentYawDeg}
           onSelectScene={handleSelectScene}
