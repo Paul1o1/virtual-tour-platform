@@ -4,6 +4,8 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Tour, Scene, Hotspot, HotspotInfo } from '@/types/tour';
 import { HotspotModal } from './HotspotModal';
 import { SceneNav } from './SceneNav';
+import { FloorPlanRadar } from './FloorPlanRadar';
+import { LeadCaptureModal } from './LeadCaptureModal';
 import {
   Maximize,
   Minimize,
@@ -17,6 +19,7 @@ import {
   Share2,
   Code2,
   Crosshair,
+  Calendar,
 } from 'lucide-react';
 
 interface TourViewerProps {
@@ -65,6 +68,8 @@ export default function TourViewer({
   const [showCoordsHelper, setShowCoordsHelper] = useState(false);
   const [lastClickedCoords, setLastClickedCoords] = useState<{ yaw: string; pitch: string } | null>(null);
   const [showEmbedModal, setShowEmbedModal] = useState(false);
+  const [showLeadModal, setShowLeadModal] = useState(false);
+  const [currentYawDeg, setCurrentYawDeg] = useState(0);
   const [copiedCode, setCopiedCode] = useState(false);
   const [origin, setOrigin] = useState('');
 
@@ -75,31 +80,31 @@ export default function TourViewer({
   const currentScene =
     tour.scenes.find((s) => s.id === currentSceneId) || tour.scenes[0];
 
-  // SVG for Link hotspot (walk to next panorama floor icon)
+  // SVG for Link hotspot (walk to next panorama floor icon) - Addis 360 Forest + Saffron
   const createLinkMarkerSvg = (label: string) => `
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%;" class="psv-custom-link-marker group cursor-pointer pointer-events-auto">
-      <div class="w-11 h-11 rounded-full bg-blue-500/85 border-2 border-white/90 shadow-2xl flex items-center justify-center animate-marker-pulse text-white group-hover:bg-blue-600 transition-all">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <div class="w-11 h-11 rounded-full bg-[#0E3B34]/90 border-2 border-[#F0B429] shadow-2xl flex items-center justify-center animate-marker-pulse text-[#F0B429] group-hover:scale-110 group-hover:bg-[#16534A] transition-all">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="18 15 12 9 6 15"></polyline>
         </svg>
       </div>
-      <div class="mt-1 px-2.5 py-1 rounded-md bg-black/85 backdrop-blur-md border border-white/20 text-white text-[11px] font-semibold whitespace-nowrap shadow-lg">
+      <div class="mt-1 px-2.5 py-1 rounded-md bg-[#0E3B34]/95 backdrop-blur-md border border-[#F0B429]/40 text-[#FBFCFA] text-[11px] font-display font-bold whitespace-nowrap shadow-xl">
         ${label}
       </div>
     </div>
   `;
 
-  // SVG for Info hotspot (painting / detail popup icon)
+  // SVG for Info hotspot (painting / detail popup icon) - Addis 360 Saffron + Ink
   const createInfoMarkerSvg = (title: string) => `
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%;" class="psv-custom-info-marker group cursor-pointer pointer-events-auto">
-      <div class="w-9 h-9 rounded-full bg-amber-500/90 border-2 border-white shadow-xl flex items-center justify-center text-zinc-950 font-bold group-hover:scale-110 group-hover:bg-amber-400 transition-all">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <div class="w-9 h-9 rounded-full bg-[#F0B429] border-2 border-[#0E3B34] shadow-2xl flex items-center justify-center text-[#14201D] font-bold group-hover:scale-110 group-hover:bg-[#F7CB65] transition-all">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="12" y1="16" x2="12" y2="12"></line>
           <line x1="12" y1="8" x2="12.01" y2="8"></line>
         </svg>
       </div>
-      <div class="mt-1 px-2.5 py-1 rounded-md bg-zinc-950/85 backdrop-blur-md border border-amber-500/40 text-amber-200 text-[11px] font-semibold whitespace-nowrap shadow-lg">
+      <div class="mt-1 px-2.5 py-1 rounded-md bg-[#14201D]/90 backdrop-blur-md border border-[#F0B429]/40 text-[#F0B429] text-[11px] font-display font-bold whitespace-nowrap shadow-xl">
         ${title}
       </div>
     </div>
@@ -221,6 +226,15 @@ export default function TourViewer({
         if (!isMounted) return;
         if (e.marker.data) {
           setActiveInfo(e.marker.data as HotspotInfo);
+        }
+      });
+
+      // Listen for camera rotation to feed live radar cone on 2D floor plan
+      viewer.addEventListener('position-updated', (e: any) => {
+        if (!isMounted) return;
+        if (e.position && e.position.yaw !== undefined) {
+          const deg = Math.round(((e.position.yaw * 180) / Math.PI) % 360);
+          setCurrentYawDeg(deg < 0 ? deg + 360 : deg);
         }
       });
 
@@ -409,13 +423,13 @@ export default function TourViewer({
         {/* Tour & Current Scene Info Badge */}
         {!isPlacementMode && (
           <div className="flex items-center gap-3 pointer-events-auto">
-            <div className="px-3.5 py-2 rounded-xl bg-black/75 backdrop-blur-md border border-white/10 shadow-2xl">
-              <h1 className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping inline-block" />
+            <div className="px-3.5 py-2 rounded-2xl bg-forest/90 backdrop-blur-md border border-line/25 shadow-2xl">
+              <h1 className="text-sm font-display font-extrabold text-paper tracking-wide flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-saffron animate-ping inline-block" />
                 {currentScene?.name}
               </h1>
               {!embedMode && (
-                <p className="text-[11px] text-zinc-400 font-medium">
+                <p className="text-[11px] text-muted font-medium">
                   {tour.title}
                 </p>
               )}
@@ -425,14 +439,24 @@ export default function TourViewer({
 
         {/* Top Right Quick Actions */}
         <div className="flex items-center gap-2 pointer-events-auto ml-auto">
+          {/* Schedule a Tour Button */}
+          <button
+            onClick={() => setShowLeadModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-saffron hover:bg-saffron-hover text-ink font-display font-extrabold text-xs shadow-xl transition-all"
+            title="Schedule a Private In-Person Viewing"
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Schedule Tour</span>
+          </button>
+
           {/* Coordinates Inspector Toggle */}
           <button
             onClick={() => setShowCoordsHelper(!showCoordsHelper)}
             title="Inspect Coordinates"
-            className={`p-2.5 rounded-xl backdrop-blur-md border transition-all ${
+            className={`p-2 rounded-xl backdrop-blur-md border transition-all ${
               showCoordsHelper
-                ? 'bg-blue-600 text-white border-blue-400 shadow-lg shadow-blue-500/20'
-                : 'bg-black/60 hover:bg-black/85 text-zinc-300 hover:text-white border-white/10'
+                ? 'bg-teal text-paper border-saffron shadow-lg'
+                : 'bg-forest/75 hover:bg-forest text-muted hover:text-paper border-line/20'
             }`}
           >
             <Crosshair className="w-4 h-4" />
@@ -442,13 +466,23 @@ export default function TourViewer({
             <button
               onClick={() => setShowEmbedModal(true)}
               title="Get Embed Code"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-black/60 hover:bg-black/85 text-zinc-200 hover:text-white backdrop-blur-md border border-white/10 text-xs font-semibold shadow-lg transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-forest/75 hover:bg-forest text-paper backdrop-blur-md border border-line/20 text-xs font-display font-bold shadow-lg transition-all"
             >
-              <Code2 className="w-3.5 h-3.5 text-blue-400" />
+              <Code2 className="w-3.5 h-3.5 text-saffron" />
               <span className="hidden sm:inline">Embed</span>
             </button>
           )}
         </div>
+      </div>
+
+      {/* Floating Interactive Floor Plan & Radar in Bottom-Left */}
+      <div className="absolute bottom-20 left-4 z-20 pointer-events-none">
+        <FloorPlanRadar
+          scenes={tour.scenes}
+          currentSceneId={currentSceneId}
+          currentYawDeg={currentYawDeg}
+          onSelectScene={handleSelectScene}
+        />
       </div>
 
       {/* Coordinate Tooltip */}
@@ -521,6 +555,14 @@ export default function TourViewer({
 
       {/* Info Hotspot Modal */}
       <HotspotModal info={activeInfo} onClose={() => setActiveInfo(null)} />
+
+      {/* In-Tour Lead Capture / Schedule a Tour Modal */}
+      <LeadCaptureModal
+        isOpen={showLeadModal}
+        onClose={() => setShowLeadModal(false)}
+        tour={tour}
+        currentSceneName={currentScene?.name}
+      />
 
       {/* Embed Modal */}
       {showEmbedModal && (

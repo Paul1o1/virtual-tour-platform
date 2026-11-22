@@ -329,9 +329,9 @@ export default function HomePage() {
   };
 
   return (
-    <div className="relative w-full h-screen flex flex-col md:flex-row bg-zinc-950 overflow-hidden font-sans">
+    <div className="relative w-full h-screen flex flex-col md:flex-row bg-ink text-paper overflow-hidden font-body selection:bg-saffron selection:text-ink">
       {/* Main 360 Viewer Canvas Area */}
-      <div className="relative flex-1 h-[60vh] md:h-full border-b md:border-b-0 md:border-r border-zinc-800">
+      <div className="relative flex-1 h-[60vh] md:h-full border-b md:border-b-0 md:border-r border-line/20">
         <TourViewer
           tour={tour}
           activeSceneId={activeSceneId}
@@ -343,32 +343,32 @@ export default function HomePage() {
       </div>
 
       {/* Sidebar Control & Information Studio */}
-      <div className="w-full md:w-[440px] lg:w-[480px] h-[40vh] md:h-full flex flex-col bg-zinc-950 border-t md:border-t-0 border-zinc-800 text-zinc-100 overflow-hidden">
+      <div className="w-full md:w-[440px] lg:w-[480px] h-[40vh] md:h-full flex flex-col bg-ink border-t md:border-t-0 border-line/20 text-paper overflow-hidden">
         {/* Top Studio Header & Mode Tabs */}
-        <div className="p-4 border-b border-zinc-800/80 bg-zinc-900/60 flex flex-col gap-3">
+        <div className="p-4 border-b border-line/20 bg-forest/80 backdrop-blur-md flex flex-col gap-3">
           <div className="flex items-center justify-between">
             {/* Tour Switcher Dropdown */}
             <div className="relative">
               <button
                 onClick={() => setIsTourDropdownOpen(!isTourDropdownOpen)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-left transition-colors group"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-ink/90 hover:bg-ink border border-line/30 text-left transition-colors group shadow-md"
               >
-                <Building2 className="w-4 h-4 text-blue-400 shrink-0" />
+                <Building2 className="w-4 h-4 text-saffron shrink-0" />
                 <div className="max-w-[170px] sm:max-w-[210px] truncate">
-                  <div className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider truncate">
+                  <div className="text-[10px] font-display font-bold text-saffron uppercase tracking-wider truncate">
                     {tour.client || 'Client Tour'}
                   </div>
-                  <div className="text-xs font-bold text-white truncate">
+                  <div className="text-xs font-display font-extrabold text-paper truncate">
                     {tour.title}
                   </div>
                 </div>
-                <ChevronDown className="w-3.5 h-3.5 text-zinc-500 group-hover:text-white transition-colors" />
+                <ChevronDown className="w-3.5 h-3.5 text-muted group-hover:text-paper transition-colors" />
               </button>
 
               {/* Dropdown Menu */}
               {isTourDropdownOpen && (
-                <div className="absolute top-full left-0 mt-2 w-72 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-1">
-                  <div className="px-3 py-1.5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                <div className="absolute top-full left-0 mt-2 w-72 bg-forest border border-line/30 rounded-2xl shadow-2xl z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-1 text-paper">
+                  <div className="px-3 py-1.5 text-[10px] font-display font-extrabold text-saffron uppercase tracking-wider">
                     Select Client Tour
                   </div>
 
@@ -380,27 +380,27 @@ export default function HomePage() {
                         onClick={() => handleSelectTour(t.slug)}
                         className={`w-full px-3 py-2 rounded-xl text-left text-xs transition-colors flex items-center justify-between ${
                           t.slug === tour.slug
-                            ? 'bg-blue-600/20 text-blue-400 font-bold border border-blue-500/30'
-                            : 'text-zinc-300 hover:bg-zinc-800'
+                            ? 'bg-saffron text-ink font-display font-bold shadow-sm'
+                            : 'text-paper hover:bg-forest-light'
                         }`}
                       >
                         <div className="truncate mr-2">
-                          <p className="truncate">{t.title}</p>
-                          <p className="text-[10px] text-zinc-500 truncate">{t.client}</p>
+                          <p className="truncate font-semibold">{t.title}</p>
+                          <p className="text-[10px] opacity-75 truncate">{t.client}</p>
                         </div>
-                        {t.slug === tour.slug && <Check className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
+                        {t.slug === tour.slug && <Check className="w-3.5 h-3.5 text-ink shrink-0" />}
                       </button>
                     ))}
                   </div>
 
                   {/* Actions & Links */}
-                  <div className="pt-1.5 border-t border-zinc-800/80 space-y-1">
+                  <div className="pt-1.5 border-t border-line/20 space-y-1">
                     <button
                       onClick={() => {
                         setIsTourDropdownOpen(false);
                         setIsNewTourOpen(true);
                       }}
-                      className="w-full px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition-all"
+                      className="w-full px-3 py-2 rounded-xl bg-saffron hover:bg-saffron-hover text-ink text-xs font-display font-extrabold flex items-center justify-center gap-2 shadow-md transition-all"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>+ New Client Tour</span>
@@ -409,19 +409,19 @@ export default function HomePage() {
                     {tour.companySlug && (
                       <Link
                         href={`/c/${tour.companySlug}`}
-                        className="w-full px-3 py-1.5 rounded-xl bg-zinc-800/60 hover:bg-zinc-800 text-zinc-300 hover:text-white text-[11px] font-semibold flex items-center justify-between transition-colors"
+                        className="w-full px-3 py-1.5 rounded-xl bg-ink/70 hover:bg-ink text-paper text-[11px] font-semibold flex items-center justify-between transition-colors"
                       >
                         <span className="truncate">Open {tour.client} Portal</span>
-                        <ExternalLink className="w-3 h-3 text-blue-400 shrink-0" />
+                        <ExternalLink className="w-3 h-3 text-saffron shrink-0" />
                       </Link>
                     )}
 
                     <Link
                       href="/companies"
-                      className="w-full px-3 py-1.5 rounded-xl text-zinc-400 hover:text-white text-[11px] font-medium flex items-center justify-between hover:bg-zinc-800/40 transition-colors"
+                      className="w-full px-3 py-1.5 rounded-xl text-muted hover:text-paper text-[11px] font-medium flex items-center justify-between hover:bg-ink/50 transition-colors"
                     >
                       <span>Agency Client Directory</span>
-                      <Building2 className="w-3 h-3 text-zinc-500 shrink-0" />
+                      <Building2 className="w-3 h-3 text-teal shrink-0" />
                     </Link>
                   </div>
                 </div>
@@ -429,23 +429,23 @@ export default function HomePage() {
             </div>
 
             {/* Cloud Sync Status Indicator */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-950 border border-zinc-800 text-[10px] font-medium text-zinc-400">
-              <Cloud className={`w-3 h-3 ${syncStatus === 'saving' ? 'animate-pulse text-amber-400' : syncStatus === 'synced' ? 'text-emerald-400' : 'text-zinc-500'}`} />
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-ink/80 border border-line/20 text-[10px] font-medium text-muted">
+              <Cloud className={`w-3 h-3 ${syncStatus === 'saving' ? 'animate-pulse text-saffron' : syncStatus === 'synced' ? 'text-teal' : 'text-muted'}`} />
               <span>{syncStatus === 'saving' ? 'Saving...' : syncStatus === 'synced' ? 'Cloud Synced' : 'Saved Locally'}</span>
             </div>
           </div>
 
           {/* Mode Switcher */}
-          <div className="flex items-center p-1 bg-zinc-950 rounded-xl border border-zinc-800 text-xs font-semibold">
+          <div className="flex items-center p-1 bg-ink/90 rounded-2xl border border-line/20 text-xs font-semibold">
             <button
               onClick={() => {
                 setActiveTab('editor');
                 setIsPlacementMode(false);
               }}
-              className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
+              className={`flex-1 py-1.5 rounded-xl text-center font-display font-bold transition-all ${
                 activeTab === 'editor'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-zinc-400 hover:text-white'
+                  ? 'bg-saffron text-ink shadow-md font-extrabold'
+                  : 'text-muted hover:text-paper'
               }`}
             >
               Editor
@@ -455,10 +455,10 @@ export default function HomePage() {
                 setActiveTab('preview');
                 setIsPlacementMode(false);
               }}
-              className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
+              className={`flex-1 py-1.5 rounded-xl text-center font-display font-bold transition-all ${
                 activeTab === 'preview'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-zinc-400 hover:text-white'
+                  ? 'bg-saffron text-ink shadow-md font-extrabold'
+                  : 'text-muted hover:text-paper'
               }`}
             >
               Embed / Share
