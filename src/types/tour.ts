@@ -56,11 +56,30 @@ export interface TourSettings {
 
 export interface Tour {
   id: string;
+  companyId?: string;
+  companySlug?: string;
   slug: string;
   title: string;
-  client: string;
+  client: string; // company / client name
   description?: string;
   startSceneId: string;
   settings: TourSettings;
   scenes: Scene[];
+  status?: 'published' | 'draft' | 'archived';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Company {
+  id: string;
+  slug: string; // URL-safe slug e.g. "skyline-realty"
+  name: string; // e.g. "Skyline Luxury Realty"
+  tagline?: string;
+  logoUrl?: string;
+  website?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  primaryColor?: string;
+  toursCount?: number;
+  createdAt?: string;
 }

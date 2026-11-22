@@ -90,10 +90,18 @@ export default function HomePage() {
     } catch (_) {}
   };
 
-  // Load saved tour on mount
+  // Load saved tour or URL ?tour= on mount
   useEffect(() => {
     setOrigin(window.location.origin);
     fetchToursList();
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const requestedTour = searchParams.get('tour');
+
+    if (requestedTour) {
+      handleSelectTour(requestedTour);
+      return;
+    }
 
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -385,8 +393,8 @@ export default function HomePage() {
                     ))}
                   </div>
 
-                  {/* Create New Tour Button */}
-                  <div className="pt-1.5 border-t border-zinc-800/80">
+                  {/* Actions & Links */}
+                  <div className="pt-1.5 border-t border-zinc-800/80 space-y-1">
                     <button
                       onClick={() => {
                         setIsTourDropdownOpen(false);
@@ -397,6 +405,24 @@ export default function HomePage() {
                       <Plus className="w-3.5 h-3.5" />
                       <span>+ New Client Tour</span>
                     </button>
+
+                    {tour.companySlug && (
+                      <Link
+                        href={`/c/${tour.companySlug}`}
+                        className="w-full px-3 py-1.5 rounded-xl bg-zinc-800/60 hover:bg-zinc-800 text-zinc-300 hover:text-white text-[11px] font-semibold flex items-center justify-between transition-colors"
+                      >
+                        <span className="truncate">Open {tour.client} Portal</span>
+                        <ExternalLink className="w-3 h-3 text-blue-400 shrink-0" />
+                      </Link>
+                    )}
+
+                    <Link
+                      href="/companies"
+                      className="w-full px-3 py-1.5 rounded-xl text-zinc-400 hover:text-white text-[11px] font-medium flex items-center justify-between hover:bg-zinc-800/40 transition-colors"
+                    >
+                      <span>Agency Client Directory</span>
+                      <Building2 className="w-3 h-3 text-zinc-500 shrink-0" />
+                    </Link>
                   </div>
                 </div>
               )}

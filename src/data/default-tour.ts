@@ -1,12 +1,40 @@
-import { Tour } from '@/types/tour';
+import { Tour, Company } from '@/types/tour';
+
+export const defaultCompanies: Company[] = [
+  {
+    id: 'comp_lumina',
+    slug: 'lumina-fine-arts',
+    name: 'Lumina Fine Arts',
+    tagline: 'Contemporary art exhibits, private galleries & curated installations',
+    logoUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=150&auto=format&fit=crop&q=80',
+    website: 'https://luminafinearts.example.com',
+    contactEmail: 'contact@luminafinearts.com',
+    primaryColor: '#3b82f6',
+    toursCount: 1,
+  },
+  {
+    id: 'comp_skyline',
+    slug: 'skyline-realty',
+    name: 'Skyline Luxury Real Estate',
+    tagline: 'High-end penthouses, modern waterfront estates & architectural homes',
+    logoUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=150&auto=format&fit=crop&q=80',
+    website: 'https://skylineluxury.example.com',
+    contactEmail: 'info@skylinerealty.com',
+    primaryColor: '#10b981',
+    toursCount: 1,
+  },
+];
 
 export const defaultTour: Tour = {
   id: 'art-gallery-modern',
+  companyId: 'comp_lumina',
+  companySlug: 'lumina-fine-arts',
   slug: 'art-gallery',
   title: 'Gallery Lumina: Contemporary Showcase',
   client: 'Lumina Fine Arts',
   description: 'An interactive virtual walkthrough featuring contemporary paintings, sculptures, and architectural design.',
   startSceneId: 'scene-entrance',
+  status: 'published',
   settings: {
     autoRotate: true,
     autoRotateSpeed: '0.4rpm',
@@ -196,3 +224,80 @@ export const defaultTour: Tour = {
     },
   ],
 };
+
+// Second default tour for Skyline Realty to demonstrate multiple tours per company
+export const skylineTour: Tour = {
+  id: 'skyline-penthouse-tour',
+  companyId: 'comp_skyline',
+  companySlug: 'skyline-realty',
+  slug: 'skyline-penthouse',
+  title: 'The Skyview Penthouse 42B',
+  client: 'Skyline Luxury Real Estate',
+  description: 'A 4,800 sq ft panoramic penthouse featuring double-height glass, private terrace, and 360 skyline vistas.',
+  startSceneId: 'sky-living',
+  status: 'published',
+  settings: {
+    autoRotate: true,
+    autoRotateSpeed: '0.3rpm',
+    autoRotateDelay: 3500,
+    brandName: 'Skyline Luxury Real Estate',
+    primaryColor: '#10b981',
+    showSceneList: true,
+    showGyroscope: true,
+    allowFullscreen: true,
+  },
+  scenes: [
+    {
+      id: 'sky-living',
+      name: 'Grand Salon & Terrace Entry',
+      description: 'Expansive main reception area with open terrace overlooking the bay.',
+      imageUrl: 'https://photo-sphere-viewer-data.netlify.app/assets/tour/key-biscayne-2.jpg',
+      thumbnailUrl: 'https://photo-sphere-viewer-data.netlify.app/assets/tour/key-biscayne-2.jpg',
+      floor: 'Floor 42',
+      initialView: { yaw: '0deg', pitch: '-5deg', zoom: 50 },
+      hotspots: [
+        {
+          id: 'hs-walk-dining',
+          type: 'link',
+          position: { yaw: '175deg', pitch: '-8deg' },
+          targetSceneId: 'sky-dining',
+          label: 'Walk to Formal Dining Suite',
+        },
+        {
+          id: 'info-sky-ceiling',
+          type: 'info',
+          position: { yaw: '45deg', pitch: '15deg' },
+          label: 'Floor-to-Ceiling Glass',
+          info: {
+            title: '14ft Acoustic Low-E Glass',
+            category: 'Specifications',
+            badge: 'Luxury Feature',
+            description: 'Custom triple-glazed insulated acoustic panels ensuring total tranquility while framing unobstructed 360-degree city and ocean horizons.',
+            mediaUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=900&auto=format&fit=crop&q=80',
+            mediaType: 'image',
+          },
+        },
+      ],
+    },
+    {
+      id: 'sky-dining',
+      name: 'Formal Dining & Wine Vault',
+      description: 'Custom walnut joinery with temperature-controlled wine storage for 400 bottles.',
+      imageUrl: 'https://photo-sphere-viewer-data.netlify.app/assets/tour/key-biscayne-3.jpg',
+      thumbnailUrl: 'https://photo-sphere-viewer-data.netlify.app/assets/tour/key-biscayne-3.jpg',
+      floor: 'Floor 42',
+      initialView: { yaw: '90deg', pitch: '0deg', zoom: 50 },
+      hotspots: [
+        {
+          id: 'hs-back-salon',
+          type: 'link',
+          position: { yaw: '270deg', pitch: '-10deg' },
+          targetSceneId: 'sky-living',
+          label: 'Return to Grand Salon',
+        },
+      ],
+    },
+  ],
+};
+
+export const allDefaultTours: Tour[] = [defaultTour, skylineTour];

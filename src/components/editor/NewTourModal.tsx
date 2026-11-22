@@ -1,26 +1,55 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Tour } from '@/types/tour';
+import React, { useState, useEffect } from 'react';
+import { Tour, Company } from '@/types/tour';
+import { defaultCompanies } from '@/data/default-tour';
 import { Plus, X, Sparkles, Building2, User, Globe2 } from 'lucide-react';
 
 interface NewTourModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreateTour: (tour: Tour) => void;
+  defaultCompanySlug?: string;
 }
 
-export function NewTourModal({ isOpen, onClose, onCreateTour }: NewTourModalProps) {
+export function NewTourModal({
+  isOpen,
+  onClose,
+  onCreateTour,
+  defaultCompanySlug,
+}: NewTourModalProps) {
+  const [companies, setCompanies] = useState<Company[]>(defaultCompanies);
+  const [selectedCompanySlug, setSelectedCompanySlug] = useState<string>(
+    defaultCompanySlug || defaultCompanies[0]?.slug || ''
+  );
+  const [isCustomCompany, setIsCustomCompany] = useState(false);
+  const [customCompanyName, setCustomCompanyName] = useState('');
   const [title, setTitle] = useState('');
-  const [client, setClient] = useState('');
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
+
+  useEffect(() => {
+    async function loadCompanies() {
+      try {
+        const res = await fetch('/api/companies');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.companies && data.companies.length > 0) {
+            setCompanies(data.companies);
+            if (!defaultCompanySlug) {
+              setSelectedCompanySlug(data.companies[0].slug);
+            }
+          }
+        }
+      } catch (_) {}
+    }
+    loadCompanies();
+  }, [defaultCompanySlug]);
 
   if (!isOpen) return null;
 
   const handleTitleChange = (val: string) => {
     setTitle(val);
-    // Auto-generate clean slug from title if slug hasn't been manually set
     const autoSlug = val
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -30,21 +59,40 @@ export function NewTourModal({ isOpen, onClose, onCreateTour }: NewTourModalProp
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !client.trim() || !slug.trim()) return;
+
+    let compSlug = selectedCompanySlug;
+    let clientName = '';
+
+    if (isCustomCompany) {
+      if (!customCompanyName.trim()) return;
+      clientName = customCompanyName.trim();
+      compSlug = customCompanyName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+    } else {
+      const found = companies.find((c) => c.slug === selectedCompanySlug);
+      clientName = found ? found.name : 'Client Company';
+    }
+
+    if (!title.trim() || !clientName || !slug.trim()) return;
 
     const initialSceneId = `scene_${Date.now()}`;
     const newTour: Tour = {
       id: `tour_${Date.now()}`,
+      companySlug: compSlug,
+      companyId: `comp_${compSlug}`,
       slug: slug.trim().toLowerCase(),
       title: title.trim(),
-      client: client.trim(),
+      client: clientName,
       description: description.trim(),
       startSceneId: initialSceneId,
+      status: 'published',
       settings: {
         autoRotate: true,
         autoRotateSpeed: '0.4rpm',
         autoRotateDelay: 3500,
-        brandName: client.trim(),
+        brandName: clientName,
         primaryColor: '#3b82f6',
         showSceneList: true,
         showGyroscope: true,
@@ -81,8 +129,8 @@ export function NewTourModal({ isOpen, onClose, onCreateTour }: NewTourModalProp
               <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Create New Client Tour</h3>
-              <p className="text-xs text-zinc-400">Create a dedicated 360° walkthrough for a new client</p>
+              <h3 className="text-base font-bold text-white">Create New 360 Tour</h3>
+              <p className="text-xs text-zinc-400">Assign to a company or create a new client account</p>
             </div>
           </div>
           <button
@@ -95,23 +143,46 @@ export function NewTourModal({ isOpen, onClose, onCreateTour }: NewTourModalProp
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Company Assignment */}
           <div>
-            <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-              Client / Business Name <span className="text-red-400">*</span>
-            </label>
-            <div className="relative">
-              <User className="absolute left-3 top-3 w-4 h-4 text-zinc-500" />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-zinc-300">
+                Company / Client Account <span className="text-red-400">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsCustomCompany(!isCustomCompany)}
+                className="text-[11px] text-blue-400 hover:text-blue-300 font-semibold"
+              >
+                {isCustomCompany ? 'Choose Existing Company' : '+ New Company'}
+              </button>
+            </div>
+
+            {isCustomCompany ? (
               <input
                 type="text"
                 required
-                placeholder="e.g. Skyline Luxury Realty"
-                value={client}
-                onChange={(e) => setClient(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500"
+                placeholder="e.g. Apex Modern Architecture"
+                value={customCompanyName}
+                onChange={(e) => setCustomCompanyName(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500"
               />
-            </div>
+            ) : (
+              <select
+                value={selectedCompanySlug}
+                onChange={(e) => setSelectedCompanySlug(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500"
+              >
+                {companies.map((c) => (
+                  <option key={c.slug} value={c.slug}>
+                    {c.name} (/c/{c.slug})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
+          {/* Tour Title */}
           <div>
             <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
               Tour Title <span className="text-red-400">*</span>
@@ -119,13 +190,14 @@ export function NewTourModal({ isOpen, onClose, onCreateTour }: NewTourModalProp
             <input
               type="text"
               required
-              placeholder="e.g. 742 Evergreen Penthouse"
+              placeholder="e.g. The Skyview Penthouse 42B"
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
               className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500"
             />
           </div>
 
+          {/* Custom Slug */}
           <div>
             <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
               Custom URL Slug <span className="text-red-400">*</span>
@@ -135,24 +207,25 @@ export function NewTourModal({ isOpen, onClose, onCreateTour }: NewTourModalProp
               <input
                 type="text"
                 required
-                placeholder="e.g. 742-evergreen-penthouse"
+                placeholder="e.g. skyview-penthouse-42b"
                 value={slug}
                 onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                 className="w-full pl-9 pr-3 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white font-mono placeholder-zinc-600 focus:outline-none focus:border-blue-500"
               />
             </div>
             <p className="text-[11px] text-zinc-500 mt-1 font-mono">
-              Tour link: /tour/{slug || 'your-slug'} &nbsp;•&nbsp; Embed: /embed/{slug || 'your-slug'}
+              Live link: /tour/{slug || 'tour-slug'} &nbsp;•&nbsp; Embed: /embed/{slug || 'tour-slug'}
             </p>
           </div>
 
+          {/* Description */}
           <div>
             <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
               Description (Optional)
             </label>
             <textarea
               rows={2}
-              placeholder="Private 4-bedroom penthouse with panoramic ocean views..."
+              placeholder="High-end penthouse walkthrough featuring bay views..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3.5 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500 resize-none"
@@ -169,11 +242,11 @@ export function NewTourModal({ isOpen, onClose, onCreateTour }: NewTourModalProp
             </button>
             <button
               type="submit"
-              disabled={!title.trim() || !client.trim() || !slug.trim()}
+              disabled={!title.trim() || !slug.trim()}
               className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-xs font-bold text-white shadow-lg shadow-blue-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              Create Client Tour
+              Create Tour
             </button>
           </div>
         </form>

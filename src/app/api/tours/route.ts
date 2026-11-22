@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllTours, saveTour } from '@/lib/tour-service';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const tours = await getAllTours();
+    const { searchParams } = new URL(req.url);
+    const company = searchParams.get('company') || undefined;
+    const tours = await getAllTours(company);
     return NextResponse.json({ tours });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to list tours' }, { status: 500 });
