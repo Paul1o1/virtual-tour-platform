@@ -3,20 +3,15 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Tour, Scene, Hotspot, HotspotInfo } from '@/types/tour';
 import { HotspotModal } from './HotspotModal';
-import { SceneNav } from './SceneNav';
-import { FloorPlanRadar } from './FloorPlanRadar';
+import { SceneStrip } from './SceneStrip';
 import { LeadCaptureModal } from './LeadCaptureModal';
 import {
   Maximize,
   Minimize,
-  Compass,
   Play,
   Pause,
   ZoomIn,
   ZoomOut,
-  Info,
-  Smartphone,
-  Share2,
   Code2,
   Crosshair,
   Calendar,
@@ -64,7 +59,6 @@ export default function TourViewer({
   const [activeInfo, setActiveInfo] = useState<HotspotInfo | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isAutoRotating, setIsAutoRotating] = useState(tour.settings.autoRotate ?? true);
-  const [showSceneDrawer, setShowSceneDrawer] = useState(false);
   const [showCoordsHelper, setShowCoordsHelper] = useState(false);
   const [lastClickedCoords, setLastClickedCoords] = useState<{ yaw: string; pitch: string } | null>(null);
   const [showEmbedModal, setShowEmbedModal] = useState(false);
@@ -485,17 +479,6 @@ export default function TourViewer({
         </div>
       </div>
 
-      {/* Floating Interactive Floor Plan & Radar in Bottom-Left */}
-      <div className="absolute bottom-20 left-4 z-20 pointer-events-none">
-        <FloorPlanRadar
-          scenes={tour.scenes}
-          currentScene={tour.scenes.find((s) => s.id === currentSceneId)}
-          currentSceneId={currentSceneId}
-          currentYawDeg={currentYawDeg}
-          onSelectScene={handleSelectScene}
-        />
-      </div>
-
       {/* Coordinate Tooltip */}
       {showCoordsHelper && lastClickedCoords && (
         <div className="absolute top-18 right-4 z-30 px-3 py-2 rounded-xl bg-forest/95 border border-teal/40 text-xs text-paper backdrop-blur-md shadow-2xl space-y-1 animate-in fade-in">
@@ -511,56 +494,64 @@ export default function TourViewer({
         </div>
       )}
 
-      {/* Bottom Floating Control Bar */}
-      <div className="absolute bottom-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
-        {/* Scene Navigation Trigger */}
-        <div className="pointer-events-auto">
-          <SceneNav
+      {/* Bottom: Scene filmstrip + controls */}
+      <div className="absolute bottom-0 inset-x-0 z-20 pointer-events-none">
+        {/* Scene Thumbnail Filmstrip */}
+        <div className="px-3 pb-2 pt-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-auto">
+          <SceneStrip
             scenes={tour.scenes}
             currentSceneId={currentSceneId}
             onSelectScene={handleSelectScene}
-            isOpen={showSceneDrawer}
-            onToggle={() => setShowSceneDrawer(!showSceneDrawer)}
+            hidden={isPlacementMode}
           />
         </div>
 
-        {/* Viewport Control Buttons */}
-        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-black/70 backdrop-blur-md border border-white/10 shadow-2xl pointer-events-auto">
-          {/* Auto Rotate Toggle */}
-          <button
-            onClick={toggleAutoRotate}
-            title={isAutoRotating ? 'Pause rotation' : 'Start auto-rotation'}
-            className="p-2 rounded-xl text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            {isAutoRotating ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-          </button>
+        {/* Viewport Controls Row */}
+        <div className="flex items-center justify-between px-3 pb-3 pointer-events-auto">
+          {/* Spacer left */}
+          <div />
 
-          {/* Zoom Out */}
-          <button
-            onClick={handleZoomOut}
-            title="Zoom out"
-            className="p-2 rounded-xl text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            <ZoomOut className="w-4 h-4" />
-          </button>
+          {/* Center controls */}
+          <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-black/70 backdrop-blur-md border border-white/10 shadow-2xl">
+            {/* Auto Rotate Toggle */}
+            <button
+              onClick={toggleAutoRotate}
+              title={isAutoRotating ? 'Pause rotation' : 'Start auto-rotation'}
+              className="p-2 rounded-xl text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              {isAutoRotating ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+            </button>
 
-          {/* Zoom In */}
-          <button
-            onClick={handleZoomIn}
-            title="Zoom in"
-            className="p-2 rounded-xl text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            <ZoomIn className="w-4 h-4" />
-          </button>
+            {/* Zoom Out */}
+            <button
+              onClick={handleZoomOut}
+              title="Zoom out"
+              className="p-2 rounded-xl text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
 
-          {/* Fullscreen Toggle */}
-          <button
-            onClick={toggleFullscreen}
-            title="Toggle fullscreen"
-            className="p-2 rounded-xl text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-          </button>
+            {/* Zoom In */}
+            <button
+              onClick={handleZoomIn}
+              title="Zoom in"
+              className="p-2 rounded-xl text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+
+            {/* Fullscreen Toggle */}
+            <button
+              onClick={toggleFullscreen}
+              title="Toggle fullscreen"
+              className="p-2 rounded-xl text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+            </button>
+          </div>
+
+          {/* Spacer right */}
+          <div />
         </div>
       </div>
 
