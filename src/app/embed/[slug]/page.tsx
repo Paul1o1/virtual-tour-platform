@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { use, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { defaultTour } from '@/data/default-tour';
+import { Tour } from '@/types/tour';
 
 // Dynamically import TourViewer
 const TourViewer = dynamic(() => import('@/components/viewer/TourViewer'), {
@@ -17,15 +18,63 @@ const TourViewer = dynamic(() => import('@/components/viewer/TourViewer'), {
   ),
 });
 
+interface EmbedPageProps {
+  params: Promise<{ slug: string }>;
+}
+
 /**
  * Chromeless Embed View for iframes.
  * Has no page header, no outer chrome, full responsiveness,
  * and passes embedMode={true} to maximize viewer immersion.
  */
-export default function EmbedPage() {
+export default function EmbedPage({ params }: EmbedPageProps) {
+  const resolvedParams = use(params);
+  const slug = resolvedParams.slug;
+  const [tour, setTour] = useState<Tour | null>(null);
+
+  useEffect(() => {
+    async function loadTour() {
+      try {
+        const res = await fetch(`/api/tours/${slug}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.tour) {
+            setTour(data.tour);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('API fetch failed, fallback to local storage:', err);
+      }
+
+      try {
+        const saved = localStorage.getItem('vtour_custom_data_v1');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.slug === slug || slug === 'art-gallery') {
+            setTour(parsed);
+            return;
+          }
+        }
+      } catch (_) {}
+
+      setTour(defaultTour);
+    }
+
+    loadTour();
+  }, [slug]);
+
+  if (!tour) {
+    return (
+      <main className="w-screen h-screen flex items-center justify-center bg-black text-zinc-500 text-xs font-mono">
+        LOADING 360 TOUR...
+      </main>
+    );
+  }
+
   return (
     <main className="w-screen h-screen m-0 p-0 overflow-hidden bg-black">
-      <TourViewer tour={defaultTour} embedMode={true} />
+      <TourViewer tour={tour} embedMode={true} />
     </main>
   );
 }

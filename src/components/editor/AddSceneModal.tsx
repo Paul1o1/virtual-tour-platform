@@ -50,29 +50,55 @@ export function AddSceneModal({
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [sourceTab, setSourceTab] = useState<'upload' | 'presets' | 'url'>('upload');
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          setImageUrl(reader.result);
-          if (!name) {
-            // Suggest clean name from file name
-            const clean = file.name
-              .replace(/\.[^/.]+$/, '')
-              .replace(/[-_]/g, ' ')
-              .replace(/\b\w/g, (c) => c.toUpperCase());
-            setName(clean);
-          }
-        }
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setIsUploading(true);
+
+    if (!name) {
+      const clean = file.name
+        .replace(/\.[^/.]+$/, '')
+        .replace(/[-_]/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+      setName(clean);
     }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          setImageUrl(data.url);
+          setIsUploading(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Direct upload failed, falling back to local preview:', err);
+    }
+
+    // Fallback if network or server upload encounters an issue
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setImageUrl(reader.result);
+      }
+      setIsUploading(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -252,23 +278,39 @@ export function AddSceneModal({
                 {/* Upload File */}
                 {sourceTab === 'upload' && (
                   <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="p-6 border-2 border-dashed border-zinc-700 hover:border-blue-500 rounded-xl bg-zinc-900/50 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all text-center"
+                    onClick={() => !isUploading && fileInputRef.current?.click()}
+                    className={`p-6 border-2 border-dashed rounded-xl bg-zinc-900/50 flex flex-col items-center justify-center gap-2 transition-all text-center ${
+                      isUploading
+                        ? 'border-blue-500/50 cursor-wait'
+                        : 'border-zinc-700 hover:border-blue-500 cursor-pointer'
+                    }`}
                   >
-                    <Upload className="w-6 h-6 text-blue-400" />
-                    <div>
-                      <p className="text-xs font-semibold text-white">
-                        Click to select 360° photo from your computer
-                      </p>
-                      <p className="text-[10px] text-zinc-400 mt-0.5">
-                        Insta360 equirectangular 2:1 JPG (e.g. 6080x3040)
-                      </p>
-                    </div>
+                    {isUploading ? (
+                      <>
+                        <div className="w-6 h-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+                        <p className="text-xs font-semibold text-blue-400">
+                          Uploading 360 photo to cloud storage...
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-6 h-6 text-blue-400" />
+                        <div>
+                          <p className="text-xs font-semibold text-white">
+                            Click to select 360° photo from your computer
+                          </p>
+                          <p className="text-[10px] text-zinc-400 mt-0.5">
+                            Insta360 equirectangular 2:1 JPG (e.g. 6080x3040)
+                          </p>
+                        </div>
+                      </>
+                    )}
                     <input
                       ref={fileInputRef}
                       type="file"
                       accept="image/*"
                       onChange={handleFileUpload}
+                      disabled={isUploading}
                       className="hidden"
                     />
                   </div>

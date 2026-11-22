@@ -6,6 +6,7 @@ import { defaultTour } from '@/data/default-tour';
 import { Tour, Scene, Hotspot, HotspotPosition } from '@/types/tour';
 import { AddHotspotModal } from '@/components/editor/AddHotspotModal';
 import { AddSceneModal } from '@/components/editor/AddSceneModal';
+import { NewTourModal } from '@/components/editor/NewTourModal';
 import {
   Compass,
   Layers,
@@ -29,6 +30,9 @@ import {
   Edit3,
   ImageIcon,
   Info,
+  Building2,
+  Cloud,
+  ChevronDown,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -62,6 +66,10 @@ export default function HomePage() {
   const [editingHotspot, setEditingHotspot] = useState<Hotspot | null>(null);
   const [focusPosition, setFocusPosition] = useState<HotspotPosition | null>(null);
   const [isAddSceneOpen, setIsAddSceneOpen] = useState(false);
+  const [isNewTourOpen, setIsNewTourOpen] = useState(false);
+  const [isTourDropdownOpen, setIsTourDropdownOpen] = useState(false);
+  const [allTours, setAllTours] = useState<Array<{ id: string; slug: string; title: string; client: string; sceneCount: number }>>([]);
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'saving' | 'local'>('local');
 
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
   const [copiedEmbed, setCopiedEmbed] = useState(false);
@@ -69,9 +77,24 @@ export default function HomePage() {
   const [copiedJson, setCopiedJson] = useState(false);
   const [origin, setOrigin] = useState('');
 
-  // Load saved tour from localStorage on mount
+  // Fetch list of tours from API
+  const fetchToursList = async () => {
+    try {
+      const res = await fetch('/api/tours');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.tours && data.tours.length > 0) {
+          setAllTours(data.tours);
+        }
+      }
+    } catch (_) {}
+  };
+
+  // Load saved tour on mount
   useEffect(() => {
     setOrigin(window.location.origin);
+    fetchToursList();
+
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -86,14 +109,66 @@ export default function HomePage() {
     }
   }, []);
 
-  // Save tour changes to localStorage
-  const saveTour = (updatedTour: Tour) => {
+  // Save tour changes to localStorage AND background sync to database
+  const saveTour = async (updatedTour: Tour) => {
     setTour(updatedTour);
+    setSyncStatus('saving');
+
+    // 1. Instant local persistence
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTour));
     } catch (e) {
       console.warn('Could not save tour to localStorage', e);
     }
+
+    // 2. Background database sync
+    try {
+      const res = await fetch('/api/tours', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTour),
+      });
+
+      if (res.ok) {
+        setSyncStatus('synced');
+        fetchToursList();
+      } else {
+        setSyncStatus('local');
+      }
+    } catch (_) {
+      setSyncStatus('local');
+    }
+  };
+
+  // Switch active tour
+  const handleSelectTour = async (selectedSlug: string) => {
+    setIsTourDropdownOpen(false);
+    try {
+      const res = await fetch(`/api/tours/${selectedSlug}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.tour) {
+          setTour(data.tour);
+          setActiveSceneId(data.tour.startSceneId || data.tour.scenes[0]?.id || '');
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data.tour));
+          } catch (_) {}
+          return;
+        }
+      }
+    } catch (_) {}
+
+    if (selectedSlug === defaultTour.slug) {
+      setTour(defaultTour);
+      setActiveSceneId(defaultTour.startSceneId || defaultTour.scenes[0].id);
+    }
+  };
+
+  // Create new client tour
+  const handleCreateNewTour = (newTour: Tour) => {
+    setTour(newTour);
+    setActiveSceneId(newTour.startSceneId);
+    saveTour(newTour);
   };
 
   const activeScene =
@@ -262,15 +337,76 @@ export default function HomePage() {
       {/* Sidebar Control & Information Studio */}
       <div className="w-full md:w-[440px] lg:w-[480px] h-[40vh] md:h-full flex flex-col bg-zinc-950 border-t md:border-t-0 border-zinc-800 text-zinc-100 overflow-hidden">
         {/* Top Studio Header & Mode Tabs */}
-        <div className="p-4 border-b border-zinc-800/80 bg-zinc-900/60 flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-blue-400">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Tour Studio & Hotspot Editor</span>
+        <div className="p-4 border-b border-zinc-800/80 bg-zinc-900/60 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            {/* Tour Switcher Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsTourDropdownOpen(!isTourDropdownOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-left transition-colors group"
+              >
+                <Building2 className="w-4 h-4 text-blue-400 shrink-0" />
+                <div className="max-w-[170px] sm:max-w-[210px] truncate">
+                  <div className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider truncate">
+                    {tour.client || 'Client Tour'}
+                  </div>
+                  <div className="text-xs font-bold text-white truncate">
+                    {tour.title}
+                  </div>
+                </div>
+                <ChevronDown className="w-3.5 h-3.5 text-zinc-500 group-hover:text-white transition-colors" />
+              </button>
+
+              {/* Dropdown Menu */}
+              {isTourDropdownOpen && (
+                <div className="absolute top-full left-0 mt-2 w-72 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl z-50 p-2 space-y-1 animate-in fade-in slide-in-from-top-1">
+                  <div className="px-3 py-1.5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                    Select Client Tour
+                  </div>
+
+                  {/* Tour List */}
+                  <div className="max-h-48 overflow-y-auto space-y-0.5">
+                    {allTours.map((t) => (
+                      <button
+                        key={t.slug}
+                        onClick={() => handleSelectTour(t.slug)}
+                        className={`w-full px-3 py-2 rounded-xl text-left text-xs transition-colors flex items-center justify-between ${
+                          t.slug === tour.slug
+                            ? 'bg-blue-600/20 text-blue-400 font-bold border border-blue-500/30'
+                            : 'text-zinc-300 hover:bg-zinc-800'
+                        }`}
+                      >
+                        <div className="truncate mr-2">
+                          <p className="truncate">{t.title}</p>
+                          <p className="text-[10px] text-zinc-500 truncate">{t.client}</p>
+                        </div>
+                        {t.slug === tour.slug && <Check className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Create New Tour Button */}
+                  <div className="pt-1.5 border-t border-zinc-800/80">
+                    <button
+                      onClick={() => {
+                        setIsTourDropdownOpen(false);
+                        setIsNewTourOpen(true);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition-all"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ New Client Tour</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            <h2 className="text-base font-bold text-white tracking-tight truncate max-w-[220px] sm:max-w-[280px]">
-              {tour.title}
-            </h2>
+
+            {/* Cloud Sync Status Indicator */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-950 border border-zinc-800 text-[10px] font-medium text-zinc-400">
+              <Cloud className={`w-3 h-3 ${syncStatus === 'saving' ? 'animate-pulse text-amber-400' : syncStatus === 'synced' ? 'text-emerald-400' : 'text-zinc-500'}`} />
+              <span>{syncStatus === 'saving' ? 'Saving...' : syncStatus === 'synced' ? 'Cloud Synced' : 'Saved Locally'}</span>
+            </div>
           </div>
 
           {/* Mode Switcher */}
@@ -280,7 +416,7 @@ export default function HomePage() {
                 setActiveTab('editor');
                 setIsPlacementMode(false);
               }}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
+              className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
                 activeTab === 'editor'
                   ? 'bg-blue-600 text-white shadow-md'
                   : 'text-zinc-400 hover:text-white'
@@ -293,7 +429,7 @@ export default function HomePage() {
                 setActiveTab('preview');
                 setIsPlacementMode(false);
               }}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
+              className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
                 activeTab === 'preview'
                   ? 'bg-blue-600 text-white shadow-md'
                   : 'text-zinc-400 hover:text-white'
@@ -690,6 +826,13 @@ export default function HomePage() {
         onClose={() => setIsAddSceneOpen(false)}
         onAddScene={handleAddScene}
         existingCount={tour.scenes.length}
+      />
+
+      {/* Create New Client Tour Modal */}
+      <NewTourModal
+        isOpen={isNewTourOpen}
+        onClose={() => setIsNewTourOpen(false)}
+        onCreateTour={handleCreateNewTour}
       />
     </div>
   );
