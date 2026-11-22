@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Scene, Hotspot, HotspotPosition } from '@/types/tour';
 import {
   X,
@@ -107,6 +107,40 @@ export function AddHotspotModal({
   // Image source mode: 'upload' | 'presets' | 'url'
   const [imageSourceTab, setImageSourceTab] = useState<'presets' | 'upload' | 'url'>('presets');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync state whenever editingHotspot or isOpen changes
+  useEffect(() => {
+    if (editingHotspot) {
+      setType(editingHotspot.type || 'link');
+      if (editingHotspot.type === 'link') {
+        setTargetSceneId(editingHotspot.targetSceneId || otherScenes[0]?.id || scenes[0]?.id || '');
+        setLinkLabel(editingHotspot.label || '');
+      } else {
+        setInfoTitle(editingHotspot.info?.title || editingHotspot.label || '');
+        setInfoCategory(editingHotspot.info?.category || 'Exhibit');
+        setInfoBadge(editingHotspot.info?.badge || 'Featured');
+        setInfoDescription(editingHotspot.info?.description || '');
+        setInfoMediaUrl(editingHotspot.info?.mediaUrl || '');
+        setInfoLinkUrl(editingHotspot.info?.linkUrl || '');
+        setInfoLinkLabel(editingHotspot.info?.linkLabel || 'Learn More');
+        if (editingHotspot.info?.mediaUrl) {
+          setImageSourceTab('upload');
+        }
+      }
+    } else {
+      setType('link');
+      setTargetSceneId(otherScenes[0]?.id || scenes[0]?.id || '');
+      setLinkLabel('');
+      setInfoTitle('');
+      setInfoCategory('Exhibit');
+      setInfoBadge('Featured');
+      setInfoDescription('');
+      setInfoMediaUrl('');
+      setInfoLinkUrl('');
+      setInfoLinkLabel('Learn More');
+      setImageSourceTab('presets');
+    }
+  }, [editingHotspot, isOpen]);
 
   if (!isOpen) return null;
 

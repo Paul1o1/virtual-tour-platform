@@ -7,6 +7,8 @@ import { Tour, Scene, Hotspot, HotspotPosition } from '@/types/tour';
 import { AddHotspotModal } from '@/components/editor/AddHotspotModal';
 import { AddSceneModal } from '@/components/editor/AddSceneModal';
 import { NewTourModal } from '@/components/editor/NewTourModal';
+import { CloudSyncModal } from '@/components/editor/CloudSyncModal';
+import { getSupabaseClient } from '@/lib/supabase';
 import { getLocalTourBySlug, saveLocalTour, getLocalToursList } from '@/lib/client-storage';
 import {
   Compass,
@@ -69,6 +71,7 @@ export default function HomePage() {
   const [focusPosition, setFocusPosition] = useState<HotspotPosition | null>(null);
   const [isAddSceneOpen, setIsAddSceneOpen] = useState(false);
   const [isNewTourOpen, setIsNewTourOpen] = useState(false);
+  const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
   const [newTourDefaultCompany, setNewTourDefaultCompany] = useState<string | undefined>(undefined);
   const [isTourDropdownOpen, setIsTourDropdownOpen] = useState(false);
   const [allTours, setAllTours] = useState<Array<{ id: string; slug: string; title: string; client: string; sceneCount: number }>>(() => {
@@ -152,7 +155,61 @@ export default function HomePage() {
       console.warn('Could not save tour to localStorage', e);
     }
 
-    // 2. Background database sync
+    // 2. Direct client-side Supabase sync if credentials exist
+    let clientSynced = false;
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client.from('tours').upsert({
+          id: updatedTour.id,
+          company_id: updatedTour.companyId || null,
+          company_slug: updatedTour.companySlug || null,
+          slug: updatedTour.slug,
+          title: updatedTour.title,
+          client: updatedTour.client,
+          description: updatedTour.description || '',
+          start_scene_id: updatedTour.startSceneId,
+          status: updatedTour.status || 'published',
+          settings: updatedTour.settings,
+          updated_at: new Date().toISOString(),
+        });
+
+        for (let i = 0; i < updatedTour.scenes.length; i++) {
+          const s = updatedTour.scenes[i];
+          await client.from('scenes').upsert({
+            id: s.id,
+            tour_id: updatedTour.id,
+            name: s.name,
+            description: s.description || '',
+            image_url: s.imageUrl,
+            thumbnail_url: s.thumbnailUrl || s.imageUrl,
+            floor: String(s.floor || 'Floor 1'),
+            order_index: i,
+            initial_view: s.initialView || { yaw: 0, pitch: 0, zoom: 50 },
+          });
+
+          await client.from('hotspots').delete().eq('scene_id', s.id);
+          if (s.hotspots && s.hotspots.length > 0) {
+            const payload = s.hotspots.map((h) => ({
+              id: h.id,
+              scene_id: s.id,
+              type: h.type,
+              position: h.position,
+              target_scene_id: h.targetSceneId || null,
+              target_heading: h.targetHeading || null,
+              label: h.label || null,
+              info: h.info || null,
+            }));
+            await client.from('hotspots').insert(payload);
+          }
+        }
+        clientSynced = true;
+      } catch (err) {
+        console.warn('Direct client Supabase sync:', err);
+      }
+    }
+
+    // 3. Background server database sync
     try {
       const res = await fetch('/api/tours', {
         method: 'POST',
@@ -160,14 +217,14 @@ export default function HomePage() {
         body: JSON.stringify(updatedTour),
       });
 
-      if (res.ok) {
+      if (res.ok || clientSynced) {
         setSyncStatus('synced');
         fetchToursList();
       } else {
         setSyncStatus('local');
       }
     } catch (_) {
-      setSyncStatus('local');
+      setSyncStatus(clientSynced ? 'synced' : 'local');
     }
   };
 
@@ -503,11 +560,16 @@ export default function HomePage() {
                 <span>Companies</span>
               </Link>
 
-              {/* Cloud Sync Status Indicator */}
-              <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-ink/80 border border-line/20 text-[10px] font-medium text-muted">
-                <Cloud className={`w-3 h-3 ${syncStatus === 'saving' ? 'animate-pulse text-saffron' : syncStatus === 'synced' ? 'text-teal' : 'text-muted'}`} />
-                <span>{syncStatus === 'saving' ? 'Saving...' : syncStatus === 'synced' ? 'Cloud' : 'Local'}</span>
-              </div>
+              {/* Cloud Sync Status Button */}
+              <button
+                type="button"
+                onClick={() => setIsCloudModalOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-ink/90 hover:bg-forest-light border border-line/30 text-[11px] font-display font-bold text-mist hover:text-paper transition-all shadow-sm group"
+                title="Supabase Cloud Database Sync"
+              >
+                <Cloud className={`w-3.5 h-3.5 ${syncStatus === 'saving' ? 'animate-pulse text-saffron' : syncStatus === 'synced' ? 'text-teal' : 'text-saffron'}`} />
+                <span>{syncStatus === 'saving' ? 'Syncing...' : syncStatus === 'synced' ? 'Cloud Synced' : 'Cloud Sync'}</span>
+              </button>
             </div>
           </div>
 
@@ -981,6 +1043,17 @@ export default function HomePage() {
         }}
         onCreateTour={handleCreateNewTour}
         defaultCompanySlug={newTourDefaultCompany}
+      />
+
+      {/* Cloud Database Sync Modal */}
+      <CloudSyncModal
+        isOpen={isCloudModalOpen}
+        onClose={() => setIsCloudModalOpen(false)}
+        tour={tour}
+        onSyncComplete={() => {
+          setSyncStatus('synced');
+          fetchToursList();
+        }}
       />
     </div>
   );
