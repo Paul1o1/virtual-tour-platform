@@ -9,7 +9,7 @@ export const defaultCompanies: Company[] = [
     logoUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=150&auto=format&fit=crop&q=80',
     website: 'https://luminafinearts.example.com',
     contactEmail: 'contact@luminafinearts.com',
-    primaryColor: '#3b82f6',
+    primaryColor: '#F0B429',
     toursCount: 1,
   },
   {
@@ -40,7 +40,7 @@ export const defaultTour: Tour = {
     autoRotateSpeed: '0.4rpm',
     autoRotateDelay: 4000,
     brandName: 'Lumina Fine Arts',
-    primaryColor: '#3b82f6',
+    primaryColor: '#F0B429',
     showSceneList: true,
     showGyroscope: true,
     allowFullscreen: true,

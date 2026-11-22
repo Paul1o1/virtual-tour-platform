@@ -176,21 +176,21 @@ export function AddHotspotModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-zinc-800 bg-zinc-950/70">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-line/20 bg-forest/80">
           <div>
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-blue-400" />
+            <h3 className="text-base font-display font-extrabold text-paper flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-saffron" />
               {editingHotspot ? 'Edit Hotspot' : 'Place New Hotspot'}
             </h3>
-            <p className="text-xs text-zinc-400 mt-0.5 font-mono">
+            <p className="text-xs text-muted mt-0.5 font-mono">
               Coordinates:{' '}
-              <span className="text-blue-300 font-semibold">{String(position.yaw)}</span>,{' '}
-              <span className="text-blue-300 font-semibold">{String(position.pitch)}</span>
+              <span className="text-saffron font-bold">{String(position.yaw)}</span>,{' '}
+              <span className="text-saffron font-bold">{String(position.pitch)}</span>
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
+            className="p-1.5 rounded-lg bg-forest-light hover:bg-forest text-muted hover:text-paper transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -198,7 +198,7 @@ export function AddHotspotModal({
 
         {/* Hotspot Type Switcher */}
         <div className="p-4 sm:p-5 pb-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2 block">
+          <label className="text-xs font-display font-bold uppercase tracking-wider text-muted mb-2 block">
             Select Hotspot Type
           </label>
           <div className="grid grid-cols-2 gap-3">
@@ -207,13 +207,13 @@ export function AddHotspotModal({
               onClick={() => setType('link')}
               className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left ${
                 type === 'link'
-                  ? 'bg-blue-600/20 border-blue-500 text-white shadow-lg shadow-blue-500/10'
-                  : 'bg-zinc-950/50 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                  ? 'bg-saffron/20 border-saffron text-paper shadow-lg shadow-saffron/10'
+                  : 'bg-ink/50 border-line/20 text-muted hover:border-line/40'
               }`}
             >
               <div
                 className={`p-2 rounded-lg ${
-                  type === 'link' ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-zinc-400'
+                  type === 'link' ? 'bg-saffron text-ink font-bold' : 'bg-forest text-muted'
                 }`}
               >
                 <Compass className="w-4 h-4" />
@@ -273,11 +273,11 @@ export function AddHotspotModal({
                         }}
                         className={`group relative rounded-xl overflow-hidden border-2 text-left transition-all ${
                           isSelected
-                            ? 'border-blue-500 ring-2 ring-blue-500/30'
-                            : 'border-zinc-800 hover:border-zinc-600 opacity-75 hover:opacity-100'
+                            ? 'border-saffron ring-2 ring-saffron/40'
+                            : 'border-line/30 hover:border-line/60 opacity-75 hover:opacity-100'
                         }`}
                       >
-                        <div className="relative h-20 bg-zinc-950">
+                        <div className="relative h-20 bg-ink">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={scene.thumbnailUrl || scene.imageUrl}
@@ -286,21 +286,21 @@ export function AddHotspotModal({
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
                           {isSelected && (
-                            <div className="absolute top-1.5 right-1.5 p-1 rounded-full bg-blue-500 text-white shadow-md">
-                              <Check className="w-3 h-3" />
+                            <div className="absolute top-1.5 right-1.5 p-1 rounded-full bg-saffron text-ink shadow-md">
+                              <Check className="w-3 h-3 stroke-[3]" />
                             </div>
                           )}
                           {isSelf && (
-                            <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-zinc-800/90 text-zinc-300">
+                            <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-forest/90 text-mist">
                               Current Room
                             </span>
                           )}
                         </div>
-                        <div className="p-2 bg-zinc-900">
-                          <p className="text-xs font-semibold text-white truncate">
+                        <div className="p-2 bg-forest/70">
+                          <p className="text-xs font-semibold text-paper truncate">
                             {scene.name}
                           </p>
-                          <p className="text-[10px] text-zinc-400 truncate">
+                          <p className="text-[10px] text-muted truncate">
                             {scene.floor || 'Scene'}
                           </p>
                         </div>
@@ -311,7 +311,7 @@ export function AddHotspotModal({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-zinc-300 mb-1.5 block">
+                <label className="text-xs font-semibold text-mist mb-1.5 block">
                   Marker Label
                 </label>
                 <input
@@ -319,7 +319,7 @@ export function AddHotspotModal({
                   value={linkLabel}
                   onChange={(e) => setLinkLabel(e.target.value)}
                   placeholder={`e.g. Walk to ${targetScene?.name || 'Next Room'}`}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs placeholder:text-zinc-600 focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-ink border border-line/30 text-paper text-xs placeholder:text-muted focus:outline-none focus:border-saffron transition-colors"
                 />
               </div>
             </div>
@@ -567,10 +567,10 @@ export function AddHotspotModal({
             </button>
             <button
               type="submit"
-              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg ${
+              className={`px-5 py-2 rounded-xl text-xs font-display font-extrabold transition-all shadow-lg ${
                 type === 'link'
-                  ? 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white shadow-blue-600/30'
-                  : 'bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-zinc-950 shadow-amber-500/30'
+                  ? 'bg-saffron hover:bg-saffron-hover active:scale-98 text-ink shadow-saffron/20'
+                  : 'bg-teal hover:bg-teal-light active:scale-98 text-paper shadow-teal/20'
               }`}
             >
               {editingHotspot ? 'Save Hotspot Changes' : 'Add Hotspot to Scene'}

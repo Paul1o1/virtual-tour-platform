@@ -12,7 +12,7 @@ const TourViewer = dynamic(() => import('@/components/viewer/TourViewer'), {
   ssr: false,
   loading: () => (
     <div className="w-full h-full flex flex-col items-center justify-center bg-black text-zinc-400 gap-3">
-      <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+      <div className="w-10 h-10 border-4 border-saffron/20 border-t-saffron rounded-full animate-spin" />
       <p className="text-xs uppercase tracking-widest font-mono text-zinc-500">
         Opening 360 Space...
       </p>
@@ -70,7 +70,7 @@ export default function TourPage({ params }: TourPageProps) {
   if (isLoading || !tour) {
     return (
       <div className="w-screen h-screen flex flex-col items-center justify-center bg-black text-zinc-400 gap-3">
-        <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-saffron/20 border-t-saffron rounded-full animate-spin" />
         <p className="text-xs uppercase tracking-widest font-mono text-zinc-500">
           Loading 360 Tour ({slug})...
         </p>

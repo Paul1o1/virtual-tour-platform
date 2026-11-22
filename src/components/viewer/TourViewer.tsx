@@ -403,14 +403,14 @@ export default function TourViewer({
       {/* Placement Mode Active Indicator Banner */}
       {isPlacementMode && (
         <div className="absolute top-4 inset-x-4 z-30 flex justify-center pointer-events-none animate-in fade-in slide-in-from-top-2">
-          <div className="px-4 py-2.5 rounded-2xl bg-blue-600/95 text-white font-semibold text-xs tracking-wide shadow-2xl backdrop-blur-md border border-white/20 flex flex-wrap items-center gap-3 pointer-events-auto">
+          <div className="px-4 py-2.5 rounded-2xl bg-forest/95 text-paper font-display font-bold text-xs tracking-wide shadow-2xl backdrop-blur-md border border-saffron/40 flex flex-wrap items-center gap-3 pointer-events-auto">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+              <span className="w-2.5 h-2.5 rounded-full bg-saffron animate-ping" />
               <span>Click on the 360 photo, or:</span>
             </div>
             <button
               onClick={handlePlaceAtCenter}
-              className="px-3 py-1 rounded-xl bg-white text-blue-900 font-bold hover:bg-blue-50 active:scale-95 shadow transition-all text-xs"
+              className="px-3 py-1 rounded-xl bg-saffron hover:bg-saffron-hover text-ink font-display font-extrabold active:scale-95 shadow transition-all text-xs"
             >
               Place at Center of View
             </button>
@@ -487,14 +487,14 @@ export default function TourViewer({
 
       {/* Coordinate Tooltip */}
       {showCoordsHelper && lastClickedCoords && (
-        <div className="absolute top-18 right-4 z-30 px-3 py-2 rounded-xl bg-zinc-900/95 border border-blue-500/40 text-xs text-white backdrop-blur-md shadow-2xl space-y-1 animate-in fade-in">
-          <p className="font-semibold text-blue-400">Target Coordinates:</p>
-          <div className="font-mono text-[11px] text-zinc-300">
-            yaw: <span className="text-white font-bold">{lastClickedCoords.yaw}</span>
+        <div className="absolute top-18 right-4 z-30 px-3 py-2 rounded-xl bg-forest/95 border border-teal/40 text-xs text-paper backdrop-blur-md shadow-2xl space-y-1 animate-in fade-in">
+          <p className="font-semibold text-saffron">Target Coordinates:</p>
+          <div className="font-mono text-[11px] text-muted">
+            yaw: <span className="text-paper font-bold">{lastClickedCoords.yaw}</span>
             <br />
-            pitch: <span className="text-white font-bold">{lastClickedCoords.pitch}</span>
+            pitch: <span className="text-paper font-bold">{lastClickedCoords.pitch}</span>
           </div>
-          <p className="text-[10px] text-zinc-400 pt-1 border-t border-zinc-800">
+          <p className="text-[10px] text-muted/80 pt-1 border-t border-line/15">
             Click anywhere on the panorama to measure position
           </p>
         </div>
@@ -567,35 +567,35 @@ export default function TourViewer({
       {/* Embed Modal */}
       {showEmbedModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
           onClick={() => setShowEmbedModal(false)}
         >
           <div
-            className="w-full max-w-lg bg-zinc-900 border border-zinc-700/80 rounded-2xl p-6 shadow-2xl space-y-4"
+            className="w-full max-w-lg bg-forest border border-line/25 rounded-3xl p-6 shadow-2xl space-y-4 text-paper"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Code2 className="w-5 h-5 text-blue-400" />
+              <h3 className="text-base font-display font-extrabold text-paper flex items-center gap-2">
+                <Code2 className="w-5 h-5 text-saffron" />
                 Embed This 360 Tour
               </h3>
               <button
                 onClick={() => setShowEmbedModal(false)}
-                className="text-zinc-400 hover:text-white"
+                className="text-muted hover:text-paper"
               >
                 ✕
               </button>
             </div>
-            <p className="text-xs text-zinc-300 leading-relaxed">
+            <p className="text-xs text-muted leading-relaxed">
               Copy and paste this snippet into WordPress, Wix, Squarespace, Webflow, or any custom website. Includes full gyroscope and mobile support.
             </p>
-            <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 font-mono text-xs text-zinc-300 break-all select-all">
+            <div className="p-3 bg-ink/90 rounded-2xl border border-line/20 font-mono text-xs text-muted break-all select-all">
               {iframeSnippet}
             </div>
             <div className="flex justify-end gap-3 pt-2">
               <button
                 onClick={copyEmbedCode}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-lg transition-all"
+                className="px-5 py-2.5 bg-saffron hover:bg-saffron-hover text-ink text-xs font-display font-extrabold rounded-full shadow-lg transition-all"
               >
                 {copiedCode ? '✓ Copied to Clipboard!' : 'Copy Embed Code'}
               </button>

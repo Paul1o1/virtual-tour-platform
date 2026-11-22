@@ -10,7 +10,7 @@ const TourViewer = dynamic(() => import('@/components/viewer/TourViewer'), {
   ssr: false,
   loading: () => (
     <div className="w-full h-full flex flex-col items-center justify-center bg-black text-zinc-400 gap-3">
-      <div className="w-8 h-8 border-3 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+      <div className="w-8 h-8 border-3 border-saffron/30 border-t-saffron rounded-full animate-spin" />
       <span className="text-[11px] font-mono tracking-wider text-zinc-500">
         LOADING 360 TOUR...
       </span>

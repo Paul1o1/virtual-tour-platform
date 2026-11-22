@@ -29,7 +29,7 @@ export async function getAllCompanies(): Promise<Company[]> {
       website: c.website,
       contactEmail: c.contact_email,
       contactPhone: c.contact_phone,
-      primaryColor: c.primary_color || '#3b82f6',
+      primaryColor: c.primary_color || '#F0B429',
       toursCount: Array.isArray(c.tours) ? c.tours.length : 0,
       createdAt: c.created_at,
     }));
@@ -67,7 +67,7 @@ export async function getCompanyBySlug(slug: string): Promise<Company | null> {
       website: data.website,
       contactEmail: data.contact_email,
       contactPhone: data.contact_phone,
-      primaryColor: data.primary_color || '#3b82f6',
+      primaryColor: data.primary_color || '#F0B429',
       toursCount: Array.isArray(data.tours) ? data.tours.length : 0,
       createdAt: data.created_at,
     };
@@ -97,7 +97,7 @@ export async function saveCompany(company: Company): Promise<{ success: boolean;
         website: company.website || null,
         contact_email: company.contactEmail || null,
         contact_phone: company.contactPhone || null,
-        primary_color: company.primaryColor || '#3b82f6',
+        primary_color: company.primaryColor || '#F0B429',
         updated_at: new Date().toISOString(),
       })
       .select()
