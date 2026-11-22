@@ -52,16 +52,16 @@ export function FloorPlanRadar({
   const linkConnections: Array<{ targetId: string }> = (
     currentScene?.hotspots ?? []
   )
-    .filter((h) => h.type === 'link' && h.linkedSceneId)
-    .map((h) => ({ targetId: h.linkedSceneId as string }));
+    .filter((h) => h.type === 'link' && h.targetSceneId)
+    .map((h) => ({ targetId: h.targetSceneId as string }));
 
   // All link hotspot target ids across the whole tour (for persistent grey lines)
   const allConnections: Array<{ fromId: string; toId: string }> = [];
   scenes.forEach((scene) => {
     (scene.hotspots ?? [])
-      .filter((h) => h.type === 'link' && h.linkedSceneId)
+      .filter((h) => h.type === 'link' && h.targetSceneId)
       .forEach((h) => {
-        allConnections.push({ fromId: scene.id, toId: h.linkedSceneId as string });
+        allConnections.push({ fromId: scene.id, toId: h.targetSceneId as string });
       });
   });
 

@@ -269,9 +269,8 @@ export default function TourViewer({
 
   const prevTourRef = useRef(tour);
 
-  // When tour data changes (hotspots added/edited), refresh markers on the
-  // CURRENT scene only — never call setNodes again after init, as that aborts
-  // any in-progress panorama load and causes the stuck loader.
+  // When tour data changes (hotspots added/edited/deleted), refresh both
+  // link arrows (via setNodes) and info markers (via markersPlugin).
   useEffect(() => {
     if (
       !virtualTourPluginRef.current ||
@@ -282,13 +281,24 @@ export default function TourViewer({
 
     prevTourRef.current = tour;
 
-    // Only update the markers for the currently visible scene
     const currentNodeId =
       virtualTourPluginRef.current.state?.currentNode?.id || currentSceneId;
+
+    // 1. Rebuild ALL nodes so link hotspots (arrows) are updated.
+    //    setNodes re-navigates to currentNodeId so the user stays on the
+    //    same scene and the panorama image is NOT reloaded from scratch.
+    try {
+      const newNodes = buildNodes(tour);
+      virtualTourPluginRef.current.setNodes(newNodes, currentNodeId);
+    } catch (_) {
+      // Viewer may not be ready — safe to ignore
+    }
+
+    // 2. Refresh info markers for the current scene.
+    //    (setNodes clears markers plugin; we re-add them right after)
     const scene = tour.scenes.find((s) => s.id === currentNodeId);
     if (!scene) return;
 
-    // Replace all markers on this scene without touching other nodes
     try {
       markersPluginRef.current.clearMarkers();
       scene.hotspots
@@ -305,7 +315,7 @@ export default function TourViewer({
           });
         });
     } catch (_) {
-      // Viewer may not be ready yet — safe to ignore
+      // Safe to ignore
     }
   }, [tour, buildNodes, currentSceneId]);
 

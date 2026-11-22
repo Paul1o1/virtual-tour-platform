@@ -290,7 +290,7 @@ export default function HomePage() {
     []
   );
 
-  // Add or update hotspot
+  // Add or update hotspot — use functional setTour to avoid stale closure
   const handleAddHotspot = (newHotspot: Hotspot) => {
     const updatedScenes = tour.scenes.map((scene) => {
       if (scene.id === activeSceneId) {
@@ -298,18 +298,12 @@ export default function HomePage() {
         const updatedHotspots = exists
           ? scene.hotspots.map((h) => (h.id === newHotspot.id ? newHotspot : h))
           : [...scene.hotspots, newHotspot];
-        return {
-          ...scene,
-          hotspots: updatedHotspots,
-        };
+        return { ...scene, hotspots: updatedHotspots };
       }
       return scene;
     });
-
-    saveTour({
-      ...tour,
-      scenes: updatedScenes,
-    });
+    const updatedTour = { ...tour, scenes: updatedScenes };
+    saveTour(updatedTour);
     setEditingHotspot(null);
   };
 
