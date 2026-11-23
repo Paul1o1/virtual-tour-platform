@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Scene, Hotspot, HotspotPosition } from '@/types/tour';
+import { Scene, Hotspot, HotspotPosition, HotspotStyle } from '@/types/tour';
+import { HOTSPOT_STYLE_OPTIONS } from '@/components/viewer/marker-styles';
 import {
   X,
   Compass,
@@ -73,6 +74,9 @@ export function AddHotspotModal({
   const [type, setType] = useState<'link' | 'info'>(
     editingHotspot?.type || 'link'
   );
+  const [style, setStyle] = useState<HotspotStyle>(
+    editingHotspot?.style || (editingHotspot?.type === 'info' ? 'matterport-tag' : 'matterport-ring')
+  );
 
   // Link Hotspot state
   const otherScenes = scenes.filter((s) => s.id !== currentSceneId);
@@ -112,6 +116,10 @@ export function AddHotspotModal({
   useEffect(() => {
     if (editingHotspot) {
       setType(editingHotspot.type || 'link');
+      setStyle(
+        editingHotspot.style ||
+          (editingHotspot.type === 'info' ? 'matterport-tag' : 'matterport-ring')
+      );
       if (editingHotspot.type === 'link') {
         setTargetSceneId(editingHotspot.targetSceneId || otherScenes[0]?.id || scenes[0]?.id || '');
         setLinkLabel(editingHotspot.label || '');
@@ -129,6 +137,7 @@ export function AddHotspotModal({
       }
     } else {
       setType('link');
+      setStyle('matterport-ring');
       setTargetSceneId(otherScenes[0]?.id || scenes[0]?.id || '');
       setLinkLabel('');
       setInfoTitle('');
@@ -172,6 +181,7 @@ export function AddHotspotModal({
       const newHotspot: Hotspot = {
         id: editingHotspot?.id || `link-${Date.now()}`,
         type: 'link',
+        style,
         position: editingHotspot?.position || position,
         targetSceneId,
         label: finalLabel,
@@ -181,6 +191,7 @@ export function AddHotspotModal({
       const newHotspot: Hotspot = {
         id: editingHotspot?.id || `info-${Date.now()}`,
         type: 'info',
+        style,
         position: editingHotspot?.position || position,
         label: infoTitle.trim() || 'Info Point',
         info: {
@@ -238,7 +249,10 @@ export function AddHotspotModal({
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => setType('link')}
+              onClick={() => {
+                setType('link');
+                if (style === 'matterport-tag') setStyle('matterport-ring');
+              }}
               className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left ${
                 type === 'link'
                   ? 'bg-saffron/20 border-saffron text-paper shadow-lg shadow-saffron/10'
@@ -260,7 +274,10 @@ export function AddHotspotModal({
 
             <button
               type="button"
-              onClick={() => setType('info')}
+              onClick={() => {
+                setType('info');
+                if (style === 'matterport-ring' || style === 'modern-chevron') setStyle('matterport-tag');
+              }}
               className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left ${
                 type === 'info'
                   ? 'bg-amber-500/20 border-amber-500 text-white shadow-lg shadow-amber-500/10'
@@ -284,6 +301,73 @@ export function AddHotspotModal({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-4 sm:px-5 pb-5 space-y-4">
+          {/* Hotspot Design Style Selector */}
+          <div className="p-3.5 rounded-2xl bg-forest/40 border border-line/25 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-display font-bold uppercase tracking-wider text-muted flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-saffron" />
+                Marker Design / Style
+              </label>
+              <span className="text-[10px] text-saffron font-display font-bold">
+                {HOTSPOT_STYLE_OPTIONS.find((o) => o.id === style)?.name || 'Matterport Ring'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {HOTSPOT_STYLE_OPTIONS.map((opt) => {
+                const isSelected = style === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setStyle(opt.id)}
+                    className={`flex flex-col items-center p-2.5 rounded-xl border text-center transition-all ${
+                      isSelected
+                        ? 'bg-saffron/20 border-saffron ring-2 ring-saffron/40 shadow-lg shadow-saffron/10'
+                        : 'bg-ink/60 border-line/20 hover:border-line/40 opacity-75 hover:opacity-100'
+                    }`}
+                  >
+                    {/* Visual miniature preview */}
+                    <div className="h-9 flex items-center justify-center mb-1">
+                      {opt.id === 'matterport-ring' && (
+                        <div className="relative w-8 h-8 rounded-full border-2 border-white bg-white/20 flex items-center justify-center shadow-md">
+                          <div className="w-2.5 h-2.5 rounded-full border border-white bg-white/70"></div>
+                        </div>
+                      )}
+                      {opt.id === 'matterport-tag' && (
+                        <div className="relative w-7 h-7 rounded-full bg-[#2F7F79] border-2 border-white flex items-center justify-center shadow-md">
+                          <div className="w-2 h-2 rounded-full bg-white"></div>
+                        </div>
+                      )}
+                      {opt.id === 'modern-chevron' && (
+                        <div className="w-7 h-7 rounded-full bg-[#0E3B34] border-2 border-saffron text-saffron flex items-center justify-center shadow-md">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="18 15 12 9 6 15"></polyline>
+                          </svg>
+                        </div>
+                      )}
+                      {opt.id === 'glowing-beacon' && (
+                        <div className="relative w-6 h-6 rounded-full bg-saffron flex items-center justify-center shadow-[0_0_10px_#F0B429]">
+                          <div className="w-2 h-2 rounded-full bg-[#0E3B34]"></div>
+                        </div>
+                      )}
+                      {opt.id === 'minimal-ring' && (
+                        <div className="w-6 h-6 rounded-full border border-white flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[11px] font-display font-bold text-paper leading-tight">
+                      {opt.name}
+                    </span>
+                    <span className="text-[9px] text-muted line-clamp-1 mt-0.5">
+                      {opt.description}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           {type === 'link' ? (
             /* LINK TO DESTINATION IMAGE SCENE */
             <div className="space-y-4 pt-1">

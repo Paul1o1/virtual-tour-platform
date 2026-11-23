@@ -15,9 +15,17 @@ export interface HotspotPosition {
   pitch: number | string; // vertical angle (radians or degrees e.g. "-15deg" or -0.26)
 }
 
+export type HotspotStyle =
+  | 'matterport-ring'
+  | 'matterport-tag'
+  | 'modern-chevron'
+  | 'glowing-beacon'
+  | 'minimal-ring';
+
 export interface Hotspot {
   id: string;
   type: 'link' | 'info';
+  style?: HotspotStyle;
   position: HotspotPosition;
   // For 'link' hotspots (moving between scenes)
   targetSceneId?: string;
@@ -46,6 +54,7 @@ export interface TourSettings {
   autoRotate?: boolean;
   autoRotateSpeed?: string; // e.g. "0.5rpm"
   autoRotateDelay?: number; // ms
+  defaultHotspotStyle?: HotspotStyle;
   logoUrl?: string;
   brandName?: string;
   primaryColor?: string;

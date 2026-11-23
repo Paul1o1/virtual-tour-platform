@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Tour, Scene, Hotspot, HotspotInfo } from '@/types/tour';
+import { Tour, Scene, Hotspot, HotspotInfo, HotspotStyle } from '@/types/tour';
 import { HotspotModal } from './HotspotModal';
 import { RoomInfoCard } from './RoomInfoCard';
 import { LeadCaptureModal } from './LeadCaptureModal';
+import { renderHotspotMarkerHtml, getMarkerSize } from './marker-styles';
 import {
   Maximize,
   Minimize,
@@ -74,39 +75,12 @@ export default function TourViewer({
   const currentScene =
     tour.scenes.find((s) => s.id === currentSceneId) || tour.scenes[0];
 
-  // SVG for Link hotspot (walk to next panorama floor icon) - Addis 360 Forest + Saffron
-  const createLinkMarkerSvg = (label: string) => `
-    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%;" class="psv-custom-link-marker group cursor-pointer pointer-events-auto">
-      <div class="w-11 h-11 rounded-full bg-[#0E3B34]/90 border-2 border-[#F0B429] shadow-2xl flex items-center justify-center animate-marker-pulse text-[#F0B429] group-hover:scale-110 group-hover:bg-[#16534A] transition-all">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="18 15 12 9 6 15"></polyline>
-        </svg>
-      </div>
-      <div class="mt-1 px-2.5 py-1 rounded-md bg-[#0E3B34]/95 backdrop-blur-md border border-[#F0B429]/40 text-[#FBFCFA] text-[11px] font-display font-bold whitespace-nowrap shadow-xl">
-        ${label}
-      </div>
-    </div>
-  `;
-
-  // SVG for Info hotspot (painting / detail popup icon) - Addis 360 Saffron + Ink
-  const createInfoMarkerSvg = (title: string) => `
-    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%;" class="psv-custom-info-marker group cursor-pointer pointer-events-auto">
-      <div class="w-9 h-9 rounded-full bg-[#F0B429] border-2 border-[#0E3B34] shadow-2xl flex items-center justify-center text-[#14201D] font-bold group-hover:scale-110 group-hover:bg-[#F7CB65] transition-all">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="16" x2="12" y2="12"></line>
-          <line x1="12" y1="8" x2="12.01" y2="8"></line>
-        </svg>
-      </div>
-      <div class="mt-1 px-2.5 py-1 rounded-md bg-[#14201D]/90 backdrop-blur-md border border-[#F0B429]/40 text-[#F0B429] text-[11px] font-display font-bold whitespace-nowrap shadow-xl">
-        ${title}
-      </div>
-    </div>
-  `;
-
   // Build nodes configuration for VirtualTourPlugin
   const buildNodes = useCallback(
     (tourData: Tour) => {
+      const defaultStyle = tourData.settings.defaultHotspotStyle;
+      const brandColor = tourData.settings.primaryColor || '#F0B429';
+
       return tourData.scenes.map((scene) => ({
         id: scene.id,
         panorama: scene.imageUrl,
@@ -118,27 +92,33 @@ export default function TourViewer({
         defaultZoomLvl: scene.initialView?.zoom || 50,
         links: scene.hotspots
           .filter((h) => h.type === 'link' && h.targetSceneId)
-          .map((h) => ({
-            nodeId: h.targetSceneId!,
-            position: h.position,
-            marker: {
-              html: createLinkMarkerSvg(h.label || 'Walk forward'),
-              tooltip: h.label || 'Enter room',
-              size: { width: 140, height: 76 },
-              anchor: 'bottom center',
-            },
-          })),
+          .map((h) => {
+            const style: HotspotStyle = h.style || defaultStyle || 'matterport-ring';
+            return {
+              nodeId: h.targetSceneId!,
+              position: h.position,
+              marker: {
+                html: renderHotspotMarkerHtml('link', h.label || 'Walk forward', style, brandColor),
+                tooltip: h.label || 'Enter room',
+                size: getMarkerSize(style),
+                anchor: 'center center',
+              },
+            };
+          }),
         markers: scene.hotspots
           .filter((h) => h.type === 'info')
-          .map((h) => ({
-            id: h.id,
-            position: h.position,
-            html: createInfoMarkerSvg(h.info?.title || h.label || 'Information'),
-            tooltip: h.info?.title || h.label,
-            size: { width: 140, height: 65 },
-            anchor: 'center center',
-            data: h.info,
-          })),
+          .map((h) => {
+            const style: HotspotStyle = h.style || defaultStyle || 'matterport-tag';
+            return {
+              id: h.id,
+              position: h.position,
+              html: renderHotspotMarkerHtml('info', h.info?.title || h.label || 'Information', style, brandColor),
+              tooltip: h.info?.title || h.label,
+              size: getMarkerSize(style),
+              anchor: 'center center',
+              data: h.info,
+            };
+          }),
       }));
     },
     []
@@ -295,15 +275,19 @@ export default function TourViewer({
 
     try {
       markersPluginRef.current.clearMarkers();
+      const defaultStyle = tour.settings.defaultHotspotStyle;
+      const brandColor = tour.settings.primaryColor || '#F0B429';
+
       scene.hotspots
         .filter((h) => h.type === 'info')
         .forEach((h) => {
+          const style: HotspotStyle = h.style || defaultStyle || 'matterport-tag';
           markersPluginRef.current.addMarker({
             id: h.id,
             position: h.position,
-            html: createInfoMarkerSvg(h.info?.title || h.label || 'Information'),
+            html: renderHotspotMarkerHtml('info', h.info?.title || h.label || 'Information', style, brandColor),
             tooltip: h.info?.title || h.label,
-            size: { width: 140, height: 65 },
+            size: getMarkerSize(style),
             anchor: 'center center',
             data: h.info,
           });

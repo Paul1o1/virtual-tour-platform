@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { defaultTour } from '@/data/default-tour';
-import { Tour, Scene, Hotspot, HotspotPosition } from '@/types/tour';
+import { Tour, Scene, Hotspot, HotspotPosition, HotspotStyle } from '@/types/tour';
 import { AddHotspotModal } from '@/components/editor/AddHotspotModal';
 import { AddSceneModal } from '@/components/editor/AddSceneModal';
 import { NewTourModal } from '@/components/editor/NewTourModal';
@@ -305,6 +305,18 @@ export default function HomePage() {
     const updatedTour = { ...tour, scenes: updatedScenes };
     saveTour(updatedTour);
     setEditingHotspot(null);
+  };
+
+  // Update default hotspot/arrow design for the tour
+  const handleSetDefaultHotspotStyle = (newStyle: HotspotStyle) => {
+    const updatedTour: Tour = {
+      ...tour,
+      settings: {
+        ...tour.settings,
+        defaultHotspotStyle: newStyle,
+      },
+    };
+    saveTour(updatedTour);
   };
 
   // Add new scene
@@ -634,6 +646,54 @@ export default function HomePage() {
                       : '+ Click Anywhere on 360 Photo to Place Hotspot'}
                   </span>
                 </button>
+
+                {/* Hotspot & Arrow Design Picker */}
+                <div className="pt-2 border-t border-line/15 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-display font-bold text-paper flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-saffron" />
+                      Marker Design:
+                    </span>
+                    <span className="text-[10px] text-saffron font-display font-bold">
+                      {tour.settings.defaultHotspotStyle === 'modern-chevron'
+                        ? 'Direction Arrow'
+                        : tour.settings.defaultHotspotStyle === 'matterport-tag'
+                        ? 'Matterport Tag'
+                        : tour.settings.defaultHotspotStyle === 'glowing-beacon'
+                        ? 'Beacon'
+                        : tour.settings.defaultHotspotStyle === 'minimal-ring'
+                        ? 'Minimal Ring'
+                        : 'Matterport Ring'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: 'matterport-ring', label: 'Matterport Ring', icon: '🔘' },
+                      { id: 'modern-chevron', label: 'Arrow', icon: '⬆️' },
+                      { id: 'matterport-tag', label: 'Tag Pin', icon: '🎯' },
+                    ].map((opt) => {
+                      const isSelected =
+                        (tour.settings.defaultHotspotStyle || 'matterport-ring') === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => handleSetDefaultHotspotStyle(opt.id as HotspotStyle)}
+                          className={`py-1.5 px-2 rounded-xl text-[10px] font-display font-bold flex items-center justify-center gap-1 border transition-all ${
+                            isSelected
+                              ? 'bg-saffron text-ink border-saffron shadow-md'
+                              : 'bg-ink/70 border-line/20 text-muted hover:text-paper hover:border-line/40'
+                          }`}
+                          title={`Set default design to ${opt.label}`}
+                        >
+                          <span>{opt.icon}</span>
+                          <span className="truncate">{opt.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               {/* Active Room Scene Selector */}
@@ -810,6 +870,19 @@ export default function HomePage() {
                               <div className="flex items-center gap-2 text-[10px] text-muted">
                                 <span className="font-mono text-muted/80">
                                   {String(hotspot.position.yaw)}, {String(hotspot.position.pitch)}
+                                </span>
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-ink/90 border border-line/20 text-muted/90 font-display font-medium">
+                                  {hotspot.style === 'matterport-ring'
+                                    ? 'Matterport Ring'
+                                    : hotspot.style === 'modern-chevron'
+                                    ? 'Arrow'
+                                    : hotspot.style === 'matterport-tag'
+                                    ? 'Tag Pin'
+                                    : hotspot.style === 'glowing-beacon'
+                                    ? 'Beacon'
+                                    : hotspot.style === 'minimal-ring'
+                                    ? 'Minimal Ring'
+                                    : (isLink ? 'Matterport Ring' : 'Matterport Tag')}
                                 </span>
                                 {isLink && targetScene && (
                                   <span className="text-teal font-medium truncate">

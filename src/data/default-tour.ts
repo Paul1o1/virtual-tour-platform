@@ -39,6 +39,7 @@ export const defaultTour: Tour = {
     autoRotate: true,
     autoRotateSpeed: '0.4rpm',
     autoRotateDelay: 4000,
+    defaultHotspotStyle: 'matterport-ring',
     brandName: 'Lumina Fine Arts',
     primaryColor: '#F0B429',
     showSceneList: true,
